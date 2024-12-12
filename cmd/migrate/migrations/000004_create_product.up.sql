@@ -14,9 +14,12 @@ CREATE TABLE
         is_for_sale BOOLEAN NOT NULL,
         is_approved BOOLEAN NOT NULL,
         image_urls TEXT[],
-        category_id bigserial NOT NULL,
-        toko_id bigserial NOT NULL,
+        category_id bigint NOT NULL,
+        toko_id bigint NOT NULL,
         created_at timestamp(0)
+        with
+            time zone NOT NULL DEFAULT NOW (),
+        updated_at timestamp(0)
         with
             time zone NOT NULL DEFAULT NOW (),
             CONSTRAINT fk_category FOREIGN KEY (category_id) REFERENCES "category" (id),

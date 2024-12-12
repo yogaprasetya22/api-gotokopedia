@@ -3,18 +3,16 @@ package store
 import (
 	"context"
 	"database/sql"
-	"time"
 )
 
 type Toko struct {
-	ID           string    `json:"id"`
-	Slug         string    `json:"slug"`
-	Name         string    `json:"name"`
-	ImageProfile *string   `json:"image_profile,omitempty"`
-	Country      string    `json:"country"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	UserID       *string   `json:"user_id,omitempty"`
+	ID           int64  `json:"id"`                      // Primary key
+	UserID       int64  `json:"user_id"`                 // Foreign key to users table
+	Slug         string `json:"slug"`                    // Unique slug for the store
+	Name         string `json:"name"`                    // Store name
+	ImageProfile string `json:"image_profile,omitempty"` // Optional profile image
+	Country      string `json:"country"`                 // Store's country
+	CreatedAt    string `json:"created_at"`              // Timestamp of creation
 }
 
 type TokoStore struct {
@@ -22,11 +20,29 @@ type TokoStore struct {
 }
 
 func (s *TokoStore) Create(ctx context.Context, t *Toko) error {
-	const query = `INSERT INTO Toko (slug, name, image_profile, country, created_at, updated_at, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
-	err := s.db.QueryRowContext(ctx, query, t.Slug, t.Name, t.ImageProfile, t.Country, t.CreatedAt, t.UpdatedAt, t.UserID).Scan(&t.ID)
+	const query = `INSERT INTO toko (user_id, slug, name, image_profile, country) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`
+
+	err := s.db.QueryRowContext(ctx, query, t.UserID, t.Slug, t.Name, t.ImageProfile, t.Country).Scan(&t.ID, &t.CreatedAt)
+
 	if err != nil {
 		return err
 	}
-
 	return nil
+}
+
+func (s *TokoStore) GetByID(ctx context.Context, id int64) (*Toko, error) {
+	const query = `SELECT id, user_id, slug, name, image_profile, country, created_at FROM toko WHERE id = $1`
+
+	t := &Toko{}
+	err := s.db.QueryRowContext(ctx, query, id).Scan(&t.ID, &t.UserID, &t.Slug, &t.Name, &t.ImageProfile, &t.Country, &t.CreatedAt)
+	if err != nil {
+		switch {
+		case err == sql.ErrNoRows:
+			return nil, ErrNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return t, nil
 }

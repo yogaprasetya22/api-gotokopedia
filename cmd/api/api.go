@@ -1,18 +1,19 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store"
+	"go.uber.org/zap"
 )
 
 type application struct {
 	config config
 	store  store.Storage
+	logger *zap.SugaredLogger
 }
 
 type config struct {
@@ -35,11 +36,29 @@ func (app *application) mount() *chi.Mux {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
+	r.Use(middleware.Timeout(60 * time.Second))
+
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", app.healthCheckHandler)
 
-		r.Route("/products", func(r chi.Router) {
+		r.Route("/category", func(r chi.Router) {
+			r.Post("/", app.createCategoryHandler)
+		})
+
+		r.Route("/toko", func(r chi.Router) {
+			r.Post("/", app.createTokoHandler)
+		})
+
+		r.Route("/product", func(r chi.Router) {
 			r.Post("/", app.createProductHandler)
+
+			r.Route("/{productID}", func(r chi.Router) {
+				r.Use(app.productContextMiddleware)
+				
+				r.Get("/", app.getProductHandler)
+				// r.Put("/", app.updateProductHandler)
+				// r.Delete("/", app.deleteProductHandler)
+			})
 		})
 
 	})
@@ -56,7 +75,7 @@ func (app *application) run(mux *chi.Mux) error {
 		IdleTimeout:  time.Minute,
 	}
 
-	log.Printf("Starting server on %s", app.config.addr)
+	app.logger.Infof("Server running on %s", app.config.addr)
 
 	return srv.ListenAndServe()
 }
