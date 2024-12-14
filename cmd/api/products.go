@@ -28,8 +28,7 @@ type CreateProductRequest struct {
 	IsForSale     bool     `json:"is_for_sale" validate:"required"`
 	IsApproved    bool     `json:"is_approved" validate:"required"`
 	ImageUrls     []string `json:"image_urls" validate:"required"`
-	CategoryID    int64    `json:"category_id,omitempty" `
-	TokoID        int64    `json:"toko_id,omitempty" `
+	Version       int      `json:"version"`
 }
 
 func (app *application) createProductHandler(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +60,12 @@ func (app *application) createProductHandler(w http.ResponseWriter, r *http.Requ
 		IsForSale:     payload.IsForSale,
 		IsApproved:    payload.IsApproved,
 		ImageUrls:     payload.ImageUrls,
+		Category: store.Category{
+			ID: 1,
+		},
+		Toko: store.Toko{
+			ID: 1,
+		},
 	}
 
 	if err := app.store.Products.Create(r.Context(), p); err != nil {
@@ -81,13 +86,122 @@ func (app *application) getProductHandler(w http.ResponseWriter, r *http.Request
 
 	toko, _ := app.store.Tokos.GetByID(ctx, product.Toko.ID)
 	category, _ := app.store.Categoris.GetByID(ctx, product.Category.ID)
+	comments, _ := app.store.Comments.GetByProductID(ctx, product.ID)
 
 	product.Toko = *toko
 	product.Category = *category
+	product.Comments = comments
 
-if err := app.jsonResponse(w, http.StatusOK, product); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, product); err != nil {
 		app.internalServerError(w, r, err)
 	}
+}
+
+type UpdateProductPayload struct {
+	Name          *string   `json:"name" validate:"omitempty"`
+	Slug          *string   `json:"slug" validate:"omitempty,max=100"`
+	Description   *string   `json:"description" validate:"omitempty,max=100"`
+	Price         *float64  `json:"price" validate:"omitempty"`
+	DiscountPrice *float64  `json:"discount_price" validate:"omitempty"`
+	Discount      *float64  `json:"discount" validate:"omitempty"`
+	Rating        *float64  `json:"rating" validate:"omitempty"`
+	Estimation    *string   `json:"estimation" validate:"omitempty"`
+	Stock         *int      `json:"stock" validate:"omitempty"`
+	Sold          *int      `json:"sold" validate:"omitempty"`
+	IsForSale     *bool     `json:"is_for_sale" validate:"omitempty"`
+	IsApproved    *bool     `json:"is_approved" validate:"omitempty"`
+	ImageUrls     *[]string `json:"image_urls" validate:"omitempty"`
+	Version       *int      `json:"version"`
+}
+
+func (app *application) updateProductHandler(w http.ResponseWriter, r *http.Request) {
+	product := getPostFromContext(r)
+
+	var payload UpdateProductPayload
+
+	err := readJSON(w, r, &payload)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	err = Validate.Struct(payload)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if payload.Name != nil {
+		product.Name = *payload.Name
+	}
+	if payload.Slug != nil {
+		product.Slug = *payload.Slug
+	}
+	if payload.Description != nil {
+		product.Description = *payload.Description
+	}
+	if payload.Price != nil {
+		product.Price = *payload.Price
+	}
+	if payload.DiscountPrice != nil {
+		product.DiscountPrice = *payload.DiscountPrice
+	}
+	if payload.Discount != nil {
+		product.Discount = *payload.Discount
+	}
+	if payload.Rating != nil {
+		product.Rating = *payload.Rating
+	}
+	if payload.Estimation != nil {
+		product.Estimation = *payload.Estimation
+	}
+	if payload.Stock != nil {
+		product.Stock = *payload.Stock
+	}
+	if payload.Sold != nil {
+		product.Sold = *payload.Sold
+	}
+	if payload.IsForSale != nil {
+		product.IsForSale = *payload.IsForSale
+	}
+	if payload.IsApproved != nil {
+		product.IsApproved = *payload.IsApproved
+	}
+	if payload.ImageUrls != nil {
+		product.ImageUrls = *payload.ImageUrls
+	}
+
+	if err := app.store.Products.Update(r.Context(), product); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, product); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+func (app *application) deleteProductHandler(w http.ResponseWriter, r *http.Request) {
+	idParam := chi.URLParam(r, "productID")
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	ctx := r.Context()
+	if err := app.store.Products.Delete(ctx, id); err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundError(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (app *application) productContextMiddleware(next http.Handler) http.Handler {

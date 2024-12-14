@@ -42,19 +42,25 @@ type UserStore struct {
 }
 
 func (s *UserStore) Create(ctx context.Context, u *User) error {
-	const query = `INSERT INTO users (username, email, password,is_active) VALUES ($1, $2, $3, $4) RETURNING id, created_at`
+	const query = `INSERT INTO users (username, email, password, is_active) VALUES ($1, $2, $3, $4) RETURNING id, created_at`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
 
 	err := s.db.QueryRowContext(ctx, query, u.Username, u.Email, u.Password.hash, u.IsActive).Scan(&u.ID, &u.CreatedAt)
 
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
 func (s *UserStore) GetByID(ctx context.Context, id int64) (*User, error) {
 	const query = `SELECT id, username, email, password, created_at, is_active FROM users WHERE id = $1`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
 
 	u := &User{}
 	err := s.db.QueryRowContext(ctx, query, id).Scan(&u.ID, &u.Username, &u.Email, &u.Password.hash, &u.CreatedAt, &u.IsActive)

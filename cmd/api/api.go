@@ -41,23 +41,35 @@ func (app *application) mount() *chi.Mux {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", app.healthCheckHandler)
 
+		// category
 		r.Route("/category", func(r chi.Router) {
 			r.Post("/", app.createCategoryHandler)
 		})
 
+		// toko
 		r.Route("/toko", func(r chi.Router) {
 			r.Post("/", app.createTokoHandler)
 		})
 
+		// product
 		r.Route("/product", func(r chi.Router) {
 			r.Post("/", app.createProductHandler)
 
 			r.Route("/{productID}", func(r chi.Router) {
 				r.Use(app.productContextMiddleware)
-				
+
 				r.Get("/", app.getProductHandler)
-				// r.Put("/", app.updateProductHandler)
-				// r.Delete("/", app.deleteProductHandler)
+				r.Patch("/", app.updateProductHandler)
+				r.Delete("/", app.deleteProductHandler)
+			})
+		})
+
+		// user
+		r.Route("/users", func(r chi.Router) {
+			
+			r.Route("/{userID}", func(r chi.Router) {
+				
+				r.Get("/", app.getUserHandler)
 			})
 		})
 

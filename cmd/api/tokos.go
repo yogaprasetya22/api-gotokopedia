@@ -10,10 +10,10 @@ import (
 // const TokoCtx TokoKey = "toko"
 
 type CreateTokoRequest struct {
-	Slug         string `json:"slug"`
-	Name         string `json:"name"`
-	ImageProfile string `json:"image_profile,omitempty"`
-	Country      string `json:"country"`
+	Slug         string `json:"slug" validate:"required"`
+	Name         string `json:"name" validate:"required"`
+	ImageProfile string `json:"image_profile,omitempty" validate:"required"`
+	Country      string `json:"country" validate:"required"`
 }
 
 func (app *application) createTokoHandler(w http.ResponseWriter, r *http.Request) {
