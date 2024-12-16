@@ -12,10 +12,10 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-const version = ""
+const version = "0.1"
 
-//	@title			Social Jagres API
-//	@description	API for Social Jagres, a social network for jagres
+//	@title			Tokopedia API
+//	@description	API for Tokopedia, a social network for gohpers
 //	@termsOfService	http://swagger.io/terms/
 
 //	@contact.name	API Support
@@ -31,11 +31,10 @@ const version = ""
 // @in							header
 // @name						Authorization
 // @description
-//
-// Note: Swagger UI is disabled for this API.
 func main() {
 	cfg := config{
-		addr: env.GetString("ADDR", ":8080"),
+		addr:   env.GetString("ADDR", ":8080"),
+		apiURL: env.GetString("EXTERNAL_URL", "localhost:8080"),
 		db: dbConfig{
 			addr:         env.GetString("DB_ADDR", "postgresql://jagres:Jagres112.@localhost:5432/socialjagres?sslmode=disable"),
 			maxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 30),
