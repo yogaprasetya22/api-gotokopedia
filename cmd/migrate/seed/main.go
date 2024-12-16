@@ -42,6 +42,7 @@ func main() {
 // )
 
 // func main() {
+// 	// mau melihat log generated products
 // 	addr := env.GetString("DB_ADDR", "postgresql://jagres:Jagres112.@localhost/gotokopedia?sslmode=disable")
 
 // 	log.Println("Database address:", addr)
@@ -53,8 +54,20 @@ func main() {
 
 // 	defer conn.Close()
 
-// 	storage := store.NewStorage(conn)
+// 	store := store.NewStorage(conn)
 
+// 	// Generate products
+// 	products := generateProducts(store)
+// 	for _, product := range products {
+// 		log.Printf("Sold: %d", product.Sold)
+// 		log.Printf("Discount product: %+v", product.Discount)
+// 		log.Printf("Discount product: %+v", product.DiscountPrice)
+// 		log.Printf("Price: %+v", product.Price)
+// 	}
+
+// }
+
+// func generateProducts(storage store.Storage) []*store.Product {
 // 	var allProductDummy []dummy.Product
 
 // 	// Gabungkan semua data dummy
@@ -71,7 +84,6 @@ func main() {
 // 		if err := json.Unmarshal([]byte(data), &productDummy); err != nil {
 // 			log.Fatalf("Error unmarshalling products: %v", err)
 // 		}
-// 		log.Printf("Unmarshalled %d products", len(productDummy))
 // 		allProductDummy = append(allProductDummy, productDummy...)
 // 	}
 
@@ -83,15 +95,6 @@ func main() {
 // 			continue
 // 		}
 
-// 		// Konversi harga menjadi float64 tanpa karakter non-digit
-// 		parsePrice := func(value string) float64 {
-// 			cleaned := strings.ReplaceAll(value, ".", "")
-// 			cleaned = strings.ReplaceAll(cleaned, ",", "")
-// 			cleaned = strings.ReplaceAll(cleaned, "Rp", "")
-// 			cleaned = strings.ReplaceAll(cleaned, " ", "")
-// 			parsed, _ := strconv.ParseFloat(cleaned, 64)
-// 			return parsed
-// 		}
 
 // 		// Konversi rating menjadi float64
 // 		parseFloat := func(value string) float64 {
@@ -101,6 +104,33 @@ func main() {
 // 			cleaned := strings.ReplaceAll(value, ".", "")
 // 			cleaned = strings.ReplaceAll(cleaned, ",", "")
 // 			parsed, _ := strconv.ParseFloat(cleaned, 64)
+// 			return parsed
+// 		}
+
+// 		// Konversi diskon menjadi float64 "10%"
+// 		parseDiscount := func(value string) float64 {
+// 			if value == "null" || value == "" {
+// 				return 0
+// 			}
+// 			cleaned := strings.ReplaceAll(value, "%", "")
+// 			cleaned = strings.ReplaceAll(cleaned, ",", "")
+// 			parsed, _ := strconv.ParseFloat(cleaned, 64)
+// 			return parsed
+// 		}
+
+// 		// konversi harga diskon menjadi float64 "Rp 1.000.000"
+// 		parcePrice := func(value string) float64 {
+// 			if value == "" || value == "null" {
+// 				return 0
+// 			}
+// 			cleaned := strings.ReplaceAll(value, ".", "")
+// 			cleaned = strings.ReplaceAll(cleaned, "Rp", "")
+// 			cleaned = strings.ReplaceAll(cleaned, " ", "")
+// 			parsed, err := strconv.ParseFloat(cleaned, 64)
+// 			if err != nil {
+// 				log.Printf("Error parsing discount price: %v", err)
+// 				return 0
+// 			}
 // 			return parsed
 // 		}
 
@@ -117,23 +147,18 @@ func main() {
 // 		}
 
 // 		// Konversi sold menjadi int
-// 		parseInt := func(value string) int {
+// 		parseSold := func(value string) int {
 // 			if value == "null" || value == "" {
 // 				return 0
 // 			}
-// 			cleaned := strings.ReplaceAll(value, ".", "")
-// 			cleaned = strings.ReplaceAll(cleaned, ",", "")
-// 			parsed, _ := strconv.Atoi(cleaned)
-// 			return parsed
-// 		}
-
-// 		// Properti toko
-// 		toko := store.Toko{
-// 			Slug:         product.Toko.Username,
-// 			Name:         product.Toko.TokoName,
-// 			ImageProfile: product.Toko.ImageToko,
-// 			Country:      product.Country,
-// 			UserID:       rand.Int63n(10) + 1,
+// 			cleaned := strings.ReplaceAll(value, "Terjual ", "")
+// 			cleaned = strings.ReplaceAll(cleaned, "+", "")
+// 			cleaned = strings.ReplaceAll(cleaned, " ", "")
+// 			baseSold, _ := strconv.Atoi(cleaned)
+// 			if strings.Contains(value, "+") {
+// 				return baseSold + rand.Intn(100) // Tambahkan nilai acak antara 0 dan 99
+// 			}
+// 			return baseSold
 // 		}
 
 // 		// Dapatkan kategori berdasarkan slug
@@ -146,21 +171,20 @@ func main() {
 // 			Name:          product.ProductName,
 // 			Slug:          product.Slug,
 // 			Description:   product.Description,
-// 			Price:         parsePrice(product.Price),
-// 			DiscountPrice: parseFloat(product.DiscountPrice),
-// 			Discount:      parseFloat(product.Discount),
+// 			Country:       product.Country,
+// 			Price:         parcePrice(product.Price),
+// 			DiscountPrice: parcePrice(product.DiscountPrice),
+// 			Discount:      parseDiscount(product.Discount),
 // 			Rating:        parseFloat(product.Rating),
 // 			Estimation:    product.Estimation,
 // 			Stock:         parseStock(product.Stock),
-// 			Sold:          parseInt(product.Sold),
+// 			Sold:          parseSold(product.Sold),
 // 			IsForSale:     product.Discount != "" && product.Discount != "null",
 // 			IsApproved:    true,
 // 			ImageUrls:     product.ImageURL,
 // 			Category:      *category,
-// 			Toko:          toko,
 // 		}
 // 	}
 
-// 	log.Println("Total products:", len(products))
-// 	log.Println("Total Tokos:", len(allProductDummy))
+// 	return products
 // }

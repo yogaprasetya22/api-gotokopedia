@@ -204,11 +204,17 @@ func generateProducts(storage store.Storage, tokos []*store.Toko) []*store.Produ
 
 		// Konversi harga menjadi float64 tanpa karakter non-digit
 		parsePrice := func(value string) float64 {
+			if value == "" || value == "null" {
+				return 0
+			}
 			cleaned := strings.ReplaceAll(value, ".", "")
-			cleaned = strings.ReplaceAll(cleaned, ",", "")
 			cleaned = strings.ReplaceAll(cleaned, "Rp", "")
 			cleaned = strings.ReplaceAll(cleaned, " ", "")
-			parsed, _ := strconv.ParseFloat(cleaned, 64)
+			parsed, err := strconv.ParseFloat(cleaned, 64)
+			if err != nil {
+				log.Printf("Error parsing discount price: %v", err)
+				return 0
+			}
 			return parsed
 		}
 
@@ -218,6 +224,17 @@ func generateProducts(storage store.Storage, tokos []*store.Toko) []*store.Produ
 				return 0
 			}
 			cleaned := strings.ReplaceAll(value, ".", "")
+			cleaned = strings.ReplaceAll(cleaned, ",", "")
+			parsed, _ := strconv.ParseFloat(cleaned, 64)
+			return parsed
+		}
+
+		// Konversi diskon menjadi float64 "10%"
+		parseDiscount := func(value string) float64 {
+			if value == "null" || value == "" {
+				return 0
+			}
+			cleaned := strings.ReplaceAll(value, "%", "")
 			cleaned = strings.ReplaceAll(cleaned, ",", "")
 			parsed, _ := strconv.ParseFloat(cleaned, 64)
 			return parsed
@@ -236,14 +253,18 @@ func generateProducts(storage store.Storage, tokos []*store.Toko) []*store.Produ
 		}
 
 		// Konversi sold menjadi int
-		parseInt := func(value string) int {
+		parseSold := func(value string) int {
 			if value == "null" || value == "" {
 				return 0
 			}
-			cleaned := strings.ReplaceAll(value, ".", "")
-			cleaned = strings.ReplaceAll(cleaned, ",", "")
-			parsed, _ := strconv.Atoi(cleaned)
-			return parsed
+			cleaned := strings.ReplaceAll(value, "Terjual ", "")
+			cleaned = strings.ReplaceAll(cleaned, "+", "")
+			cleaned = strings.ReplaceAll(cleaned, " ", "")
+			baseSold, _ := strconv.Atoi(cleaned)
+			if strings.Contains(value, "+") {
+				return baseSold + rand.Intn(100) // Tambahkan nilai acak antara 0 dan 99
+			}
+			return baseSold
 		}
 
 		// Dapatkan kategori berdasarkan slug
@@ -269,13 +290,14 @@ func generateProducts(storage store.Storage, tokos []*store.Toko) []*store.Produ
 			Name:          product.ProductName,
 			Slug:          product.Slug,
 			Description:   product.Description,
+			Country:       product.Country,
 			Price:         parsePrice(product.Price),
-			DiscountPrice: parseFloat(product.DiscountPrice),
-			Discount:      parseFloat(product.Discount),
+			DiscountPrice: parsePrice(product.DiscountPrice),
+			Discount:      parseDiscount(product.Discount),
 			Rating:        parseFloat(product.Rating),
 			Estimation:    product.Estimation,
 			Stock:         parseStock(product.Stock),
-			Sold:          parseInt(product.Sold),
+			Sold:          parseSold(product.Sold),
 			IsForSale:     product.Discount != "" && product.Discount != "null",
 			IsApproved:    true,
 			ImageUrls:     product.ImageURL,

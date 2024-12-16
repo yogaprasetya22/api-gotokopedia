@@ -1,7 +1,7 @@
 CREATE TABLE
-    IF NOT EXISTS "toko" (
+    IF NOT EXISTS "tokos" (
         id bigserial PRIMARY KEY,
-        user_id bigint NOT NULL,
+        user_id bigserial NOT NULL,
         slug TEXT NOT NULL,
         name TEXT NOT NULL,
         image_profile TEXT,
@@ -9,5 +9,5 @@ CREATE TABLE
         created_at timestamp(0)
         with
             time zone NOT NULL DEFAULT NOW (),
-            CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES "users" (id)
+            CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id)
     );

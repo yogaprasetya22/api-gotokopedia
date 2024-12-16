@@ -13,6 +13,7 @@ type Toko struct {
 	ImageProfile string `json:"image_profile,omitempty"` // Optional profile image
 	Country      string `json:"country"`                 // Store's country
 	CreatedAt    string `json:"created_at"`              // Timestamp of creation
+	User         User   `json:"user"`                    // User who owns the store
 }
 
 type TokoStore struct {
@@ -20,7 +21,7 @@ type TokoStore struct {
 }
 
 func (s *TokoStore) Exists(ctx context.Context, slug string) (bool, error) {
-	const query = `SELECT 1 FROM toko WHERE slug = $1`
+	const query = `SELECT 1 FROM tokos WHERE slug = $1`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
@@ -48,7 +49,7 @@ func (s *TokoStore) Create(ctx context.Context, t *Toko) error {
 		return nil // Jika sudah ada, tidak melakukan operasi create
 	}
 
-	const query = `INSERT INTO toko (user_id, slug, name, image_profile, country) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`
+	const query = `INSERT INTO tokos (user_id, slug, name, image_profile, country) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
@@ -62,13 +63,21 @@ func (s *TokoStore) Create(ctx context.Context, t *Toko) error {
 }
 
 func (s *TokoStore) GetByID(ctx context.Context, id int64) (*Toko, error) {
-	const query = `SELECT id, user_id, slug, name, image_profile, country, created_at FROM toko WHERE id = $1`
+	const query = `
+    SELECT t.id, t.user_id, t.slug, t.name, t.image_profile, t.country, t.created_at,
+           u.id, u.username, u.email, u.created_at
+    FROM tokos t
+    JOIN users u ON t.user_id = u.id
+    WHERE t.id = $1`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	t := &Toko{}
-	err := s.db.QueryRowContext(ctx, query, id).Scan(&t.ID, &t.UserID, &t.Slug, &t.Name, &t.ImageProfile, &t.Country, &t.CreatedAt)
+	user := &User{}
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
+		&t.ID, &t.UserID, &t.Slug, &t.Name, &t.ImageProfile, &t.Country, &t.CreatedAt,
+		&user.ID, &user.Username, &user.Email, &user.CreatedAt)
 	if err != nil {
 		switch {
 		case err == sql.ErrNoRows:
@@ -78,11 +87,12 @@ func (s *TokoStore) GetByID(ctx context.Context, id int64) (*Toko, error) {
 		}
 	}
 
+	t.User = *user
 	return t, nil
 }
 
 func (s *TokoStore) GetBySlug(ctx context.Context, slug string) (*Toko, error) {
-	const query = `SELECT id, user_id, slug, name, image_profile, country FROM toko WHERE slug = $1`
+	const query = `SELECT id, user_id, slug, name, image_profile, country FROM tokos WHERE slug = $1`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()

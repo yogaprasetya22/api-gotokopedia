@@ -52,8 +52,9 @@ func (app *application) mount() *chi.Mux {
 		})
 
 		// product
-		r.Route("/product", func(r chi.Router) {
+		r.Route("/catalogue", func(r chi.Router) {
 			r.Post("/", app.createProductHandler)
+			r.Get("/", app.getProductCategoryFeed)
 
 			r.Route("/{productID}", func(r chi.Router) {
 				r.Use(app.productContextMiddleware)
@@ -62,15 +63,23 @@ func (app *application) mount() *chi.Mux {
 				r.Patch("/", app.updateProductHandler)
 				r.Delete("/", app.deleteProductHandler)
 			})
+			
+			r.Group(func(r chi.Router) {
+				// r.Use(app.AuthTokenMiddleware)
+				r.Get("/feed", app.getProductFeedHandler)
+			})
 		})
 
 		// user
 		r.Route("/users", func(r chi.Router) {
-			
+
 			r.Route("/{userID}", func(r chi.Router) {
-				
+
 				r.Get("/", app.getUserHandler)
+				r.Put("/follow", app.followUserHandler)
+				r.Put("/unfollow", app.unfollowUserHandler)
 			})
+
 		})
 
 	})

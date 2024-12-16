@@ -1,2 +1,2 @@
-ALTER TABLE product
+ALTER TABLE products
 DROP COLUMN version;

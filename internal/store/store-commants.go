@@ -20,7 +20,7 @@ type CommentStore struct {
 
 func (s *CommentStore) GetByProductID(ctx context.Context, productID int64) ([]Comment, error) {
 	query := `
-		SELECT  COMMENTS.ID, COMMENTS.CONTENT, COMMENTS.USER_ID, COMMENTS.PRODUCT_ID, COMMENTS.CREATED_AT, USERS.USERNAME, USERS.EMAIL, USERS.ID FROM COMMENTS JOIN USERS ON USERS.ID = COMMENTS.USER_ID WHERE COMMENTS.PRODUCT_ID = $1 ORDER BY CREATED_AT DESC
+		SELECT  comments.id, comments.content, comments.user_id, comments.product_id, comments.created_at, users.username, users.email, users.id FROM comments JOIN users on users.id = comments.user_id where comments.product_id = $1 order by created_at desc
 	`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)

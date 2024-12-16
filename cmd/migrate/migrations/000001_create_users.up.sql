@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE TABLE
-    IF NOT EXISTS "users" (
+    IF NOT EXISTS users (
         id bigserial PRIMARY KEY,
         username VARCHAR(255) NOT NULL,
         email citext UNIQUE NOT NULL,

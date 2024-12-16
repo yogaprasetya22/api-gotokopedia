@@ -78,7 +78,45 @@ func (app *application) createProductHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-// getProductHandler
+func (app *application) getProductCategoryFeed(w http.ResponseWriter, r *http.Request) {
+	fq := store.PaginatedFeedQuery{
+		Limit:    12,
+		Offset:   0,
+		Sort:     "desc",
+		Category: "",
+		Search:   "",
+	}
+
+	fq, err := fq.Parse(r)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(fq); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	ctx := r.Context()
+
+	var products []*store.Product
+	if fq.Category == "" {
+		products, err = app.store.Products.GetAllProduct(ctx, fq)
+	} else {
+		products, err = app.store.Products.GetProductCategoryFeed(ctx, fq)
+	}
+
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, products); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
 func (app *application) getProductHandler(w http.ResponseWriter, r *http.Request) {
 	product := getPostFromContext(r)
 

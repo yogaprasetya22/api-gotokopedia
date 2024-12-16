@@ -17,6 +17,9 @@ var (
 type Storage struct {
 	Products interface {
 		GetByID(context.Context, int64) (*Product, error)
+		GetProductFeed(context.Context, []int64, PaginatedFeedQuery) ([]*Product, error)
+		GetProductCategoryFeed(context.Context, PaginatedFeedQuery) ([]*Product, error)
+		GetAllProduct( context.Context,  PaginatedFeedQuery) ([]*Product, error)
 		Create(context.Context, *Product) error
 		Update(context.Context, *Product) error
 		Delete(context.Context, int64) error
@@ -35,6 +38,10 @@ type Storage struct {
 		GetByID(context.Context, int64) (*User, error)
 		Create(context.Context, *User) error
 	}
+	Follow interface {
+		Follow(ctx context.Context, followerID, userID int64) error
+		Unfollow(ctx context.Context, followerID, userID int64) error
+	}
 	Comments interface {
 		GetByProductID(context.Context, int64) ([]Comment, error)
 		Create(context.Context, *Comment) error
@@ -47,6 +54,7 @@ func NewStorage(db *sql.DB) Storage {
 		Categoris: &CategoryStore{db},
 		Tokos:     &TokoStore{db},
 		Users:     &UserStore{db},
+		Follow:    &FollowerStore{db},
 		Comments:  &CommentStore{db},
 	}
 }
