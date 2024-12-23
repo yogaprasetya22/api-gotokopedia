@@ -19,7 +19,7 @@ type Storage struct {
 		GetByID(context.Context, int64) (*Product, error)
 		GetProductFeed(context.Context, []int64, PaginatedFeedQuery) ([]*Product, error)
 		GetProductCategoryFeed(context.Context, PaginatedFeedQuery) ([]*Product, error)
-		GetAllProduct( context.Context,  PaginatedFeedQuery) ([]*Product, error)
+		GetAllProduct(context.Context, PaginatedFeedQuery) ([]*Product, error)
 		Create(context.Context, *Product) error
 		Update(context.Context, *Product) error
 		Delete(context.Context, int64) error
@@ -35,8 +35,14 @@ type Storage struct {
 		Create(context.Context, *Toko) error
 	}
 	Users interface {
+		GetByGoogleID(context.Context, string) (*User, error)
 		GetByID(context.Context, int64) (*User, error)
-		Create(context.Context, *User) error
+		GetByEmail(context.Context, string) (*User, error)
+		Create(context.Context, *sql.Tx, *User) error
+		CreateByOAuth(context.Context, *User) error
+		CreateAndInvite(ctx context.Context, user *User, token string, exp time.Duration) error
+		Activate(context.Context, string) error
+		Delete(context.Context, int64) error
 	}
 	Follow interface {
 		Follow(ctx context.Context, followerID, userID int64) error
@@ -44,7 +50,13 @@ type Storage struct {
 	}
 	Comments interface {
 		GetByProductID(context.Context, int64) ([]Comment, error)
+		GetByID(context.Context, int64) (*Comment, error)
 		Create(context.Context, *Comment) error
+		Update(context.Context, *Comment) error
+		Delete(ctx context.Context, commentID, productID int64) error
+	}
+	Roles interface {
+		GetByName(context.Context, string) (*Role, error)
 	}
 }
 
@@ -58,3 +70,18 @@ func NewStorage(db *sql.DB) Storage {
 		Comments:  &CommentStore{db},
 	}
 }
+
+func withTx(db *sql.DB, ctx context.Context, f func(tx *sql.Tx) error) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	if err := f(tx); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
+

@@ -99,8 +99,8 @@ func (s *ProductStore) GetByID(ctx context.Context, id int64) (*Product, error) 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	p := &Product{}
-	err := s.db.QueryRowContext(ctx, query, id).Scan(&p.ID, &p.Name, &p.Slug, &p.Country, &p.Description, &p.Price, &p.DiscountPrice, &p.Discount, &p.Rating, &p.Estimation, &p.Stock, &p.Sold, &p.IsForSale, &p.IsApproved, &p.CreatedAt, &p.UpdatedAt, pq.Array(&p.ImageUrls), &p.Category.ID, &p.Toko.ID, &p.Version)
+	product := &Product{}
+	err := s.db.QueryRowContext(ctx, query, id).Scan(&product.ID, &product.Name, &product.Slug, &product.Country, &product.Description, &product.Price, &product.DiscountPrice, &product.Discount, &product.Rating, &product.Estimation, &product.Stock, &product.Sold, &product.IsForSale, &product.IsApproved, &product.CreatedAt, &product.UpdatedAt, pq.Array(&product.ImageUrls), &product.Category.ID, &product.Toko.ID, &product.Version)
 	if err != nil {
 		switch {
 		case err == sql.ErrNoRows:
@@ -110,16 +110,16 @@ func (s *ProductStore) GetByID(ctx context.Context, id int64) (*Product, error) 
 		}
 	}
 
-	return p, nil
+	return product, nil
 }
 
-func (s *ProductStore) Update(ctx context.Context, p *Product) error {
+func (s *ProductStore) Update(ctx context.Context, product *Product) error {
 	query := `UPDATE products SET name = $1, slug = $2, country = $3, description = $4, price = $5, discount_price = $6, discount = $7, rating = $8, estimation = $9, stock = $10, sold = $11, is_for_sale = $12, is_approved = $13, image_urls = $14, version = version + 1, updated_at = now() WHERE id = $15 AND version = $16 RETURNING version, updated_at`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	err := s.db.QueryRowContext(ctx, query, p.Name, p.Slug, p.Country, p.Description, p.Price, p.DiscountPrice, p.Discount, p.Rating, p.Estimation, p.Stock, p.Sold, p.IsForSale, p.IsApproved, pq.Array(p.ImageUrls), p.ID, p.Version).Scan(&p.Version, &p.UpdatedAt)
+	err := s.db.QueryRowContext(ctx, query, product.Name, product.Slug, product.Country, product.Description, product.Price, product.DiscountPrice, product.Discount, product.Rating, product.Estimation, product.Stock, product.Sold, product.IsForSale, product.IsApproved, pq.Array(product.ImageUrls), product.ID, product.Version).Scan(&product.Version, &product.UpdatedAt)
 
 	if err != nil {
 		switch {

@@ -1,16 +1,743 @@
 basePath: /api/v1
+definitions:
+  main.CreateCategoryRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    required:
+    - description
+    - name
+    - slug
+    type: object
+  main.CreateCommentsPayload:
+    properties:
+      content:
+        maxLength: 255
+        type: string
+      user_id:
+        type: integer
+    required:
+    - content
+    - user_id
+    type: object
+  main.CreateProductPayload:
+    properties:
+      category_id:
+        type: integer
+      description:
+        maxLength: 100
+        type: string
+      discount:
+        type: number
+      discount_price:
+        type: number
+      estimation:
+        type: string
+      image_urls:
+        items:
+          type: string
+        type: array
+      is_approved:
+        type: boolean
+      is_for_sale:
+        type: boolean
+      name:
+        type: string
+      price:
+        type: number
+      rating:
+        type: number
+      slug:
+        maxLength: 100
+        type: string
+      sold:
+        type: integer
+      stock:
+        type: integer
+      toko_id:
+        type: integer
+    required:
+    - category_id
+    - description
+    - estimation
+    - image_urls
+    - is_approved
+    - name
+    - price
+    - rating
+    - slug
+    - sold
+    - stock
+    - toko_id
+    type: object
+  main.CreateTokoRequest:
+    properties:
+      country:
+        type: string
+      image_profile:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    required:
+    - country
+    - image_profile
+    - name
+    - slug
+    type: object
+  main.CreateUserTokenPayload:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      password:
+        maxLength: 72
+        minLength: 3
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  main.RegisterUserPayload:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      password:
+        maxLength: 72
+        minLength: 3
+        type: string
+      username:
+        maxLength: 100
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  main.UpdateCommentsPayload:
+    properties:
+      content:
+        maxLength: 255
+        type: string
+      user_id:
+        type: integer
+    type: object
+  main.UpdateProductPayload:
+    properties:
+      description:
+        maxLength: 100
+        type: string
+      discount:
+        type: number
+      discount_price:
+        type: number
+      estimation:
+        type: string
+      image_urls:
+        items:
+          type: string
+        type: array
+      is_approved:
+        type: boolean
+      is_for_sale:
+        type: boolean
+      name:
+        type: string
+      price:
+        type: number
+      rating:
+        type: number
+      slug:
+        maxLength: 100
+        type: string
+      sold:
+        type: integer
+      stock:
+        type: integer
+      version:
+        type: integer
+    type: object
+  store.Category:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      slug:
+        type: string
+    type: object
+  store.Comment:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      product_id:
+        type: integer
+      updated_at:
+        type: string
+      user:
+        $ref: '#/definitions/store.User'
+      user_id:
+        type: integer
+    type: object
+  store.Product:
+    properties:
+      category:
+        $ref: '#/definitions/store.Category'
+      comments:
+        items:
+          $ref: '#/definitions/store.Comment'
+        type: array
+      country:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      discount:
+        type: number
+      discount_price:
+        type: number
+      estimation:
+        type: string
+      id:
+        type: integer
+      image_urls:
+        items:
+          type: string
+        type: array
+      is_approved:
+        type: boolean
+      is_for_sale:
+        type: boolean
+      name:
+        type: string
+      price:
+        type: number
+      rating:
+        type: number
+      slug:
+        type: string
+      sold:
+        type: integer
+      stock:
+        type: integer
+      toko:
+        $ref: '#/definitions/store.Toko'
+      updated_at:
+        type: string
+      version:
+        type: integer
+    type: object
+  store.Role:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      level:
+        type: integer
+      name:
+        type: string
+    type: object
+  store.Toko:
+    properties:
+      country:
+        description: Store's country
+        type: string
+      created_at:
+        description: Timestamp of creation
+        type: string
+      id:
+        description: Primary key
+        type: integer
+      image_profile:
+        description: Optional profile image
+        type: string
+      name:
+        description: Store name
+        type: string
+      slug:
+        description: Unique slug for the store
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/store.User'
+        description: User who owns the store
+      user_id:
+        description: Foreign key to users table
+        type: integer
+    type: object
+  store.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      google_id:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      picture:
+        type: string
+      role:
+        $ref: '#/definitions/store.Role'
+      role_id:
+        type: integer
+      username:
+        type: string
+    type: object
 info:
   contact:
     email: support@swagger.io
     name: API Support
     url: http://www.swagger.io/support
-  description: API for Tokopedia, a social network for gohpers
+  description: API for Tokopedia
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
   title: Tokopedia API
 paths:
+  /authentication/token:
+    post:
+      consumes:
+      - application/json
+      description: Creates a token for a user
+      parameters:
+      - description: User credentials
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateUserTokenPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Creates a token
+      tags:
+      - authentication
+  /authentication/user:
+    post:
+      consumes:
+      - application/json
+      description: Registers a user
+      parameters:
+      - description: User credentials
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.RegisterUserPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Registers a user
+      tags:
+      - authentication
+  /catalogue:
+    get:
+      consumes:
+      - application/json
+      description: fetch catalogue category feed with pagination
+      parameters:
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: offset
+        in: query
+        name: offset
+        type: integer
+      - description: sort
+        in: query
+        name: sort
+        type: string
+      - description: category
+        in: query
+        name: category
+        type: string
+      - description: search
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/store.Product'
+            type: array
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: fetch catalogue category feed
+      tags:
+      - catalogue
+    post:
+      consumes:
+      - application/json
+      description: create catalogue
+      parameters:
+      - description: catalogue creation payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateProductPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.Product'
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: create catalogue
+      tags:
+      - catalogue
+  /catalogue/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a Catalogue by ID
+      parameters:
+      - description: Catalogue ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Deletes a Catalogue
+      tags:
+      - catalogue
+    get:
+      consumes:
+      - application/json
+      description: fetch a catalogue by id
+      parameters:
+      - description: catalogue id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Product'
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: fetch a catalogue
+      tags:
+      - catalogue
+    patch:
+      consumes:
+      - application/json
+      description: Updates a Catalogue by ID
+      parameters:
+      - description: Catalogue ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Catalogue payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.UpdateProductPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Product'
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Updates a Catalogue
+      tags:
+      - catalogue
+  /catalogue/{productID}/comment:
+    post:
+      consumes:
+      - application/json
+      description: Create a new comment for a product
+      parameters:
+      - description: Product ID
+        in: path
+        name: productID
+        required: true
+        type: integer
+      - description: Comment creation payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateCommentsPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.Comment'
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Create Comment
+      tags:
+      - comment
+  /catalogue/{productID}/comment/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a Comment by ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: productID
+        required: true
+        type: integer
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Deletes a Comment
+      tags:
+      - comment
+    patch:
+      consumes:
+      - application/json
+      description: Updates a Comment by ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: productID
+        required: true
+        type: integer
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Comment payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.UpdateCommentsPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Comment'
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Updates a Comment
+      tags:
+      - comment
+  /catalogue/feed:
+    get:
+      consumes:
+      - application/json
+      description: fetch catalogue feed with pagination
+      parameters:
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: offset
+        in: query
+        name: offset
+        type: integer
+      - description: sort
+        in: query
+        name: sort
+        type: string
+      - description: search
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/store.Product'
+            type: array
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: fetch catalogue feed
+      tags:
+      - catalogue
+  /category:
+    post:
+      consumes:
+      - application/json
+      description: create category
+      parameters:
+      - description: category creation payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.Category'
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: create category
+      tags:
+      - category
   /health:
     get:
       description: Healthcheck endpoint
@@ -24,6 +751,158 @@ paths:
       summary: Healthcheck
       tags:
       - ops
+  /toko:
+    post:
+      consumes:
+      - application/json
+      description: create toko
+      parameters:
+      - description: toko creation payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateTokoRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.Toko'
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: create toko
+      tags:
+      - toko
+  /users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Fetches a user profile by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.User'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Fetches a user profile
+      tags:
+      - users
+  /users/{userID}/follow:
+    put:
+      consumes:
+      - application/json
+      description: Follows a user by IDs
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: User followed
+          schema:
+            type: string
+        "400":
+          description: User payload missing
+          schema: {}
+        "404":
+          description: User not found
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Follows a user
+      tags:
+      - users
+  /users/{userID}/unfollow:
+    put:
+      consumes:
+      - application/json
+      description: Unfollow a user by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: User unfollowed
+          schema:
+            type: string
+        "400":
+          description: User payload missing
+          schema: {}
+        "404":
+          description: User not found
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Unfollow a user
+      tags:
+      - users
+  /users/activate/{token}:
+    put:
+      consumes:
+      - application/json
+      description: Activates/Register a user by token
+      parameters:
+      - description: Activation token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: User activated
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Activates/Register a user
+      tags:
+      - users
 securityDefinitions:
   ApiKeyAuth:
     in: header

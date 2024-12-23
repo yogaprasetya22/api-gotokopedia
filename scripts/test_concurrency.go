@@ -9,26 +9,27 @@ import (
 )
 
 type UpdateProductPayload struct {
-	Name          *string  `json:"name"`
-	Slug          *string  `json:"slug"`
-	Description   *string  `json:"description,omitempty"`
-	Price         *float64 `json:"price"`
-	DiscountPrice *float64 `json:"discount_price"`
-	Discount      *float64 `json:"discount"`
-	Rating        *float64 `json:"rating"`
-	Estimation    *string  `json:"estimation"`
-	Stock         *int     `json:"stock"`
-	Sold          *int     `json:"sold"`
-	IsForSale     *bool    `json:"is_for_sale"`
-	IsApproved    *bool    `json:"is_approved"`
-	ImageUrls     []string `json:"image_urls"`
+	Name          *string   `json:"name" validate:"omitempty"`
+	Slug          *string   `json:"slug" validate:"omitempty,max=100"`
+	Description   *string   `json:"description" validate:"omitempty,max=100"`
+	Price         *float64  `json:"price" validate:"omitempty"`
+	DiscountPrice *float64  `json:"discount_price" validate:"omitempty"`
+	Discount      *float64  `json:"discount" validate:"omitempty"`
+	Rating        *float64  `json:"rating" validate:"omitempty"`
+	Estimation    *string   `json:"estimation" validate:"omitempty"`
+	Stock         *int      `json:"stock" validate:"omitempty"`
+	Sold          *int      `json:"sold" validate:"omitempty"`
+	IsForSale     *bool     `json:"is_for_sale" validate:"omitempty"`
+	IsApproved    *bool     `json:"is_approved" validate:"omitempty"`
+	ImageUrls     *[]string `json:"image_urls" validate:"omitempty"`
+	Version       *int      `json:"version"`
 }
 
-func updatePost(productID int, p UpdateProductPayload, wg *sync.WaitGroup) {
+func updateProduct(productID int, p UpdateProductPayload, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	// Construct the URL for the update endpoint
-	url := fmt.Sprintf("http://localhost:8080/api/v1/product/%d", productID)
+	url := fmt.Sprintf("http://localhost:8080/api/v1/catalogue/%d", productID)
 
 	// Create the JSON payload
 	b, _ := json.Marshal(p)
@@ -58,7 +59,7 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Assuming the post ID to update is 1
-	productID := 3
+	productID := 440
 
 	// Simulate User A and User B updating the same post concurrently
 	wg.Add(3)
@@ -66,9 +67,9 @@ func main() {
 	slug := "product-a"
 	description := "Product A description"
 
-	go updatePost(productID, UpdateProductPayload{Name: &name}, &wg)
-	go updatePost(productID, UpdateProductPayload{Slug: &slug}, &wg)
-	go updatePost(productID, UpdateProductPayload{Description: &description}, &wg)
+	go updateProduct(productID, UpdateProductPayload{Name: &name}, &wg)
+	go updateProduct(productID, UpdateProductPayload{Slug: &slug}, &wg)
+	go updateProduct(productID, UpdateProductPayload{Description: &description}, &wg)
 
 	wg.Wait()
 }

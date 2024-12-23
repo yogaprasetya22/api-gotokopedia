@@ -31,40 +31,21 @@ func (s *ProductStore) GetProductFeed(ctx context.Context, categoryIDs []int64, 
 	return products, nil
 }
 
-func (s *ProductStore) GetProductCategoryFeed(ctx context.Context, fq PaginatedFeedQuery) ([]*Product, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	products, err := s.productsByCategorySlug(ctx, tx, fq)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
-	return products, nil
-
-}
-
-func (s *ProductStore) productsByCategorySlug(ctx context.Context, tx *sql.Tx, fq PaginatedFeedQuery) ([]*Product, error) {
+func (s *ProductStore) productFeed(ctx context.Context, tx *sql.Tx, categoryIDs []int64, fq PaginatedFeedQuery) ([]*Product, error) {
 	query := `SELECT p.id, p.name, p.slug, p.country, p.description, p.price, p.discount_price, p.discount, p.rating, p.estimation, p.stock, p.sold, p.is_for_sale, p.is_approved, p.created_at, p.updated_at, p.image_urls, 
-               c.id, c.name, c.slug, 
-               t.id, t.user_id, t.slug, t.name, t.country, t.created_at, 
-               u.id, u.username, u.email, u.created_at, u.is_active
-        FROM products p
-        JOIN category c ON p.category_id = c.id
-        JOIN tokos t ON p.toko_id = t.id
-        JOIN users u ON t.user_id = u.id
-        WHERE p.is_approved = true AND (SELECT id FROM category WHERE slug = $1) = c.id AND (p.name ILIKE '%' || $4 || '%' OR p.description ILIKE '%' || $4 || '%')
-        ORDER BY p.created_at ` + fq.Sort + `
-        LIMIT $2 OFFSET $3`
+           c.id, c.name, c.slug, 
+           t.id, t.user_id, t.slug, t.name, t.country, t.created_at, 
+           u.id, u.username, u.email, u.created_at, u.is_active
+    FROM products p
+    JOIN category c ON p.category_id = c.id
+    JOIN tokos t ON p.toko_id = t.id
+    JOIN users u ON t.user_id = u.id
+    WHERE p.is_approved = true AND p.category_id = ANY($1) AND (p.name ILIKE '%' || $4 || '%' OR p.description ILIKE '%' || $4 || '%')
+   ORDER BY
+            p.created_at ` + fq.Sort + `
+    LIMIT $2 OFFSET $3`
 
-	rows, err := tx.QueryContext(ctx, query, fq.Category, fq.Limit, fq.Offset, fq.Search)
+	rows, err := tx.QueryContext(ctx, query, pq.Array(categoryIDs), fq.Limit, fq.Offset, fq.Search)
 	if err != nil {
 		return nil, err
 	}
@@ -90,21 +71,44 @@ func (s *ProductStore) productsByCategorySlug(ctx context.Context, tx *sql.Tx, f
 	return products, nil
 }
 
-func (s *ProductStore) productFeed(ctx context.Context, tx *sql.Tx, categoryIDs []int64, fq PaginatedFeedQuery) ([]*Product, error) {
-	query := `SELECT p.id, p.name, p.slug, p.country, p.description, p.price, p.discount_price, p.discount, p.rating, p.estimation, p.stock, p.sold, p.is_for_sale, p.is_approved, p.created_at, p.updated_at, p.image_urls, 
-           c.id, c.name, c.slug, 
-           t.id, t.user_id, t.slug, t.name, t.country, t.created_at, 
-           u.id, u.username, u.email, u.created_at, u.is_active
-    FROM products p
-    JOIN category c ON p.category_id = c.id
-    JOIN tokos t ON p.toko_id = t.id
-    JOIN users u ON t.user_id = u.id
-    WHERE p.is_approved = true AND p.category_id = ANY($1) AND (p.name ILIKE '%' || $4 || '%' OR p.description ILIKE '%' || $4 || '%')
-   ORDER BY
-			P.CREATED_AT ` + fq.Sort + `
-    LIMIT $2 OFFSET $3`
+func (s *ProductStore) GetProductCategoryFeed(ctx context.Context, fq PaginatedFeedQuery) ([]*Product, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
 
-	rows, err := tx.QueryContext(ctx, query, pq.Array(categoryIDs), fq.Limit, fq.Offset, fq.Search)
+	products, err := s.productsByCategorySlug(ctx, tx, fq)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.commentsForProducts(ctx, tx, products)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return products, nil
+}
+
+func (s *ProductStore) productsByCategorySlug(ctx context.Context, tx *sql.Tx, fq PaginatedFeedQuery) ([]*Product, error) {
+	query := `SELECT p.id, p.name, p.slug, p.country, p.description, p.price, p.discount_price, p.discount, p.rating, p.estimation, p.stock, p.sold, p.is_for_sale, p.is_approved, p.created_at, p.updated_at, p.image_urls, 
+               c.id, c.name, c.slug, 
+               t.id, t.user_id, t.slug, t.name, t.country, t.created_at, 
+               u.id, u.username, u.email, u.created_at, u.is_active
+        FROM products p
+        JOIN category c ON p.category_id = c.id
+        JOIN tokos t ON p.toko_id = t.id
+        JOIN users u ON t.user_id = u.id
+        WHERE p.is_approved = true AND (SELECT id FROM category WHERE slug = $1) = c.id AND (p.name ILIKE '%' || $4 || '%' OR p.description ILIKE '%' || $4 || '%')
+        ORDER BY p.created_at ` + fq.Sort + `
+        LIMIT $2 OFFSET $3`
+
+	rows, err := tx.QueryContext(ctx, query, fq.Category, fq.Limit, fq.Offset, fq.Search)
 	if err != nil {
 		return nil, err
 	}
