@@ -9,23 +9,43 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "http://swagger.io/terms/",
+        "termsOfService": "http://www.myogaprasetya.my.id",
         "contact": {
             "name": "API Support",
-            "url": "http://www.swagger.io/support",
-            "email": "support@swagger.io"
-        },
-        "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+            "url": "http://www.myogaprasetya.my.id",
+            "email": "mochammad.yogaprasetya112@gmail.com"
         },
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/authentication/logout": {
+            "get": {
+                "description": "Logs out a user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "authentication"
+                ],
+                "summary": "Logs out a user",
+                "responses": {
+                    "204": {
+                        "description": "User logged out",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
         "/authentication/token": {
-            "post": {
+            "get": {
                 "description": "Creates a token for a user",
                 "consumes": [
                     "application/json"
@@ -114,11 +134,6 @@ const docTemplate = `{
         },
         "/catalogue": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
                 "description": "fetch catalogue category feed with pagination",
                 "consumes": [
                     "application/json"
@@ -181,64 +196,10 @@ const docTemplate = `{
                         "schema": {}
                     }
                 }
-            },
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "create catalogue",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "catalogue"
-                ],
-                "summary": "create catalogue",
-                "parameters": [
-                    {
-                        "description": "catalogue creation payload",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/main.CreateProductPayload"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/store.Product"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {}
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {}
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {}
-                    }
-                }
             }
         },
         "/catalogue/feed": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
                 "description": "fetch catalogue feed with pagination",
                 "consumes": [
                     "application/json"
@@ -297,14 +258,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/catalogue/{id}": {
+        "/catalogue/{slug_toko}": {
             "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "fetch a catalogue by id",
+                "description": "fetch a toko by slug toko and slug product",
                 "consumes": [
                     "application/json"
                 ],
@@ -314,12 +270,12 @@ const docTemplate = `{
                 "tags": [
                     "catalogue"
                 ],
-                "summary": "fetch a catalogue",
+                "summary": "fetch a toko",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "catalogue id",
-                        "name": "id",
+                        "type": "string",
+                        "description": "slug toko",
+                        "name": "slug_toko",
                         "in": "path",
                         "required": true
                     }
@@ -340,14 +296,16 @@ const docTemplate = `{
                         "schema": {}
                     }
                 }
-            },
-            "delete": {
+            }
+        },
+        "/catalogue/{slug_toko}/{slug_product}": {
+            "get": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Delete a Catalogue by ID",
+                "description": "fetch a catalogue by slug toko and slug product",
                 "consumes": [
                     "application/json"
                 ],
@@ -357,11 +315,282 @@ const docTemplate = `{
                 "tags": [
                     "catalogue"
                 ],
-                "summary": "Deletes a Catalogue",
+                "summary": "fetch a catalogue",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "slug toko",
+                        "name": "slug_toko",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "slug product",
+                        "name": "slug_product",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.Product"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/category": {
+            "get": {
+                "description": "get all category",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "category"
+                ],
+                "summary": "get all category",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/store.Category"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "create category",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "category"
+                ],
+                "summary": "create category",
+                "parameters": [
+                    {
+                        "description": "category creation payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateCategoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/store.Category"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/comment/{slug}": {
+            "get": {
+                "description": "Get all comments for a product",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "comment"
+                ],
+                "summary": "Get Comments",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product Slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort",
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/store.Comment"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Healthcheck endpoint",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ops"
+                ],
+                "summary": "Healthcheck",
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/product": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "create product",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "product"
+                ],
+                "summary": "create product",
+                "parameters": [
+                    {
+                        "description": "product creation payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateProductPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/store.Product"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/product/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Delete a product by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "product"
+                ],
+                "summary": "Deletes a product",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Catalogue ID",
+                        "description": "product ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -390,7 +619,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Updates a Catalogue by ID",
+                "description": "Updates a product by ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -398,19 +627,19 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "catalogue"
+                    "product"
                 ],
-                "summary": "Updates a Catalogue",
+                "summary": "Updates a product",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Catalogue ID",
+                        "description": "product ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Catalogue payload",
+                        "description": "product payload",
                         "name": "payload",
                         "in": "body",
                         "required": true,
@@ -445,7 +674,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/catalogue/{productID}/comment": {
+        "/product/{productID}/comment": {
             "post": {
                 "security": [
                     {
@@ -503,7 +732,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/catalogue/{productID}/comment/{id}": {
+        "/product/{productID}/comment/{id}": {
             "delete": {
                 "security": [
                     {
@@ -611,6 +840,10 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {}
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {}
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {}
@@ -618,77 +851,6 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {}
-                    }
-                }
-            }
-        },
-        "/category": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "create category",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "category"
-                ],
-                "summary": "create category",
-                "parameters": [
-                    {
-                        "description": "category creation payload",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/main.CreateCategoryRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/store.Category"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {}
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {}
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {}
-                    }
-                }
-            }
-        },
-        "/health": {
-            "get": {
-                "description": "Healthcheck endpoint",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ops"
-                ],
-                "summary": "Healthcheck",
-                "responses": {
-                    "200": {
-                        "description": "ok",
-                        "schema": {
-                            "type": "string"
-                        }
                     }
                 }
             }
@@ -744,6 +906,70 @@ const docTemplate = `{
                 }
             }
         },
+        "/toko/{slug_toko}": {
+            "get": {
+                "description": "fetch a product toko by slug toko and slug product",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "toko"
+                ],
+                "summary": "fetch a product toko",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "slug toko",
+                        "name": "slug_toko",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.Product"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
         "/users/activate/{token}": {
             "put": {
                 "security": [
@@ -751,10 +977,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Activates/Register a user by token",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Activates/Register a user by invitation token",
                 "produces": [
                     "application/json"
                 ],
@@ -765,7 +988,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Activation token",
+                        "description": "Invitation token",
                         "name": "token",
                         "in": "path",
                         "required": true
@@ -780,6 +1003,42 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/users/current": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Fetches the current user profile",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Fetches the current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {}
                     },
                     "500": {
@@ -845,7 +1104,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Follows a user by IDs",
+                "description": "Follows a user by ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -952,16 +1211,12 @@ const docTemplate = `{
         "main.CreateCommentsPayload": {
             "type": "object",
             "required": [
-                "content",
-                "user_id"
+                "content"
             ],
             "properties": {
                 "content": {
                     "type": "string",
                     "maxLength": 255
-                },
-                "user_id": {
-                    "type": "integer"
                 }
             }
         },
@@ -1104,9 +1359,6 @@ const docTemplate = `{
                 "content": {
                     "type": "string",
                     "maxLength": 255
-                },
-                "user_id": {
-                    "type": "integer"
                 }
             }
         },
@@ -1194,6 +1446,9 @@ const docTemplate = `{
                 "product_id": {
                     "type": "integer"
                 },
+                "rating": {
+                    "type": "number"
+                },
                 "updated_at": {
                     "type": "string"
                 },
@@ -1210,12 +1465,6 @@ const docTemplate = `{
             "properties": {
                 "category": {
                     "$ref": "#/definitions/store.Category"
-                },
-                "comments": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/store.Comment"
-                    }
                 },
                 "country": {
                     "type": "string"
@@ -1300,39 +1549,27 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "country": {
-                    "description": "Store's country",
                     "type": "string"
                 },
                 "created_at": {
-                    "description": "Timestamp of creation",
                     "type": "string"
                 },
                 "id": {
-                    "description": "Primary key",
                     "type": "integer"
                 },
                 "image_profile": {
-                    "description": "Optional profile image",
                     "type": "string"
                 },
                 "name": {
-                    "description": "Store name",
                     "type": "string"
                 },
                 "slug": {
-                    "description": "Unique slug for the store",
                     "type": "string"
                 },
                 "user": {
-                    "description": "User who owns the store",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/store.User"
-                        }
-                    ]
+                    "$ref": "#/definitions/store.User"
                 },
                 "user_id": {
-                    "description": "Foreign key to users table",
                     "type": "integer"
                 }
             }
@@ -1386,7 +1623,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "Tokopedia API",
-	Description:      "API for Tokopedia",
+	Description:      "API ini menggunakan mekanisme rate limiter untuk membatasi jumlah permintaan yang dapat dilakukan oleh setiap klien dalam jangka waktu tertentu.\nHal ini bertujuan untuk mencegah penyalahgunaan API, memastikan kinerja yang stabil, dan melindungi server dari potensi serangan seperti brute force atau DDoS.\nRate limiter ini didukung oleh Redis sebagai penyimpanan sementara yang cepat dan andal untuk melacak jumlah permintaan setiap klien berdasarkan API key atau alamat IP mereka.\nRedis digunakan karena kemampuannya yang tinggi dalam menangani data secara real-time dengan latensi rendah.\nJika batas permintaan terlampaui, klien akan menerima respons dengan kode status 429 (Too Many Requests).",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

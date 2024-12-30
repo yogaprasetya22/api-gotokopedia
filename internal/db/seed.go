@@ -88,7 +88,7 @@ func Seed(store store.Storage, db *sql.DB) {
 		}
 	}
 
-	comments := generateComments(1000, users, products)
+	comments := generateComments(20000, users, products)
 	for _, comment := range comments {
 		if err := store.Comments.Create(ctx, comment); err != nil {
 			log.Println("Error creating comment:", err)
@@ -226,15 +226,18 @@ func generateProducts(storage store.Storage, tokos []*store.Toko) []*store.Produ
 		}
 
 		// Konversi rating menjadi float64
-		parseFloat := func(value string) float64 {
-			if value == "null" || value == "" {
-				return 0
-			}
-			cleaned := strings.ReplaceAll(value, ".", "")
-			cleaned = strings.ReplaceAll(cleaned, ",", "")
-			parsed, _ := strconv.ParseFloat(cleaned, 64)
-			return parsed
-		}
+		// parseFloat := func(value string) float64 {
+		// 	if value == "null" || value == "" {
+		// 		return 0
+		// 	}
+		// 	cleaned := strings.ReplaceAll(value, ",", "")
+		// 	parsed, err := strconv.ParseFloat(cleaned, 64)
+		// 	if err != nil {
+		// 		log.Printf("Error parsing float value: %v", err)
+		// 		return 0
+		// 	}
+		// 	return parsed
+		// }
 
 		// Konversi diskon menjadi float64 "10%"
 		parseDiscount := func(value string) float64 {
@@ -301,15 +304,15 @@ func generateProducts(storage store.Storage, tokos []*store.Toko) []*store.Produ
 			Price:         parsePrice(product.Price),
 			DiscountPrice: parsePrice(product.DiscountPrice),
 			Discount:      parseDiscount(product.Discount),
-			Rating:        parseFloat(product.Rating),
-			Estimation:    product.Estimation,
-			Stock:         parseStock(product.Stock),
-			Sold:          parseSold(product.Sold),
-			IsForSale:     product.Discount != "" && product.Discount != "null",
-			IsApproved:    true,
-			ImageUrls:     product.ImageURL,
-			Category:      *category,
-			Toko:          *toko,
+			// Rating:        parseFloat(product.Rating),
+			Estimation: product.Estimation,
+			Stock:      parseStock(product.Stock),
+			Sold:       parseSold(product.Sold),
+			IsForSale:  product.Discount != "" && product.Discount != "null",
+			IsApproved: true,
+			ImageUrls:  product.ImageURL,
+			Category:   *category,
+			Toko:       *toko,
 		}
 	}
 
@@ -319,11 +322,29 @@ func generateProducts(storage store.Storage, tokos []*store.Toko) []*store.Produ
 func generateComments(num int, users []*store.User, products []*store.Product) []*store.Comment {
 	cms := make([]*store.Comment, num)
 	for i := 0; i < num; i++ {
+		// Menghasilkan rating dengan lebih banyak nilai 5
+		rating := weightedRandomRating()
+
 		cms[i] = &store.Comment{
 			ProductID: products[rand.Intn(len(products))].ID,
 			UserID:    users[rand.Intn(len(users))].ID,
 			Content:   comments[rand.Intn(len(comments))],
+			Rating:    rating,
 		}
 	}
 	return cms
+}
+
+// Fungsi untuk menghasilkan rating dengan lebih banyak nilai 5
+func weightedRandomRating() float64 {
+	// Distribusi: 70% untuk rating 5, 20% untuk rating 4, 10% untuk rating 3 2 dan 1
+	randVal := rand.Intn(100)
+	switch {
+	case randVal < 70:
+		return 5.0
+	case randVal < 90:
+		return 4.0
+	default:
+		return float64(randVal%3 + 1)
+	}
 }

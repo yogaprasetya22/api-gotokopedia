@@ -7,7 +7,7 @@ import (
 )
 
 type PaginatedFeedQuery struct {
-	Limit      int    `json:"limit" validate:"gte=1,lte=20"`
+	Limit      int    `json:"limit" validate:"gte=1,lte=24"`
 	Offset     int    `json:"offset" validate:"gte=0"`
 	Category   string `json:"category" validate:"max=100"`
 	Sort       string `json:"sort" validate:"oneof=asc desc"`

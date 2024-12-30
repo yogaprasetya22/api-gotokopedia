@@ -107,8 +107,16 @@ func (app *application) googleCallbackHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusCreated, jwtToken); err != nil {
-		app.internalServerError(w, r, err)
-	}
+	// set token in cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    jwtToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+	})
+
+	// Redirect to home
+	http.Redirect(w, r, app.config.frontendURL, http.StatusSeeOther)
 
 }

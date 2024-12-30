@@ -19,14 +19,14 @@ var (
 type User struct {
 	ID        int64    `json:"id"`
 	GoogleID  string   `json:"google_id,omitempty"`
-	Picture   string   `json:"picture,omitempty"`
+	Picture   string   `json:"picture"`
 	Username  string   `json:"username"`
 	Email     string   `json:"email"`
 	Password  password `json:"-"`
 	CreatedAt string   `json:"created_at"`
 	IsActive  bool     `json:"is_active"`
-	RoleID    int64    `json:"role_id"`
-	Role      Role     `json:"role"`
+	RoleID    int64    `json:"role_id,omitempty"`
+	Role      Role     `json:"role,omitempty"`
 }
 type password struct {
 	text *string
@@ -161,7 +161,7 @@ func (s *UserStore) GetByGoogleID(ctx context.Context, googleID string) (*User, 
 }
 
 func (s *UserStore) GetByID(ctx context.Context, id int64) (*User, error) {
-	const query = `SELECT users.id, username, email, password, created_at, roles.*
+	const query = `SELECT users.id, username, email, picture, password, created_at, roles.*
 		FROM users
 		JOIN roles ON (users.role_id = roles.id)
 		WHERE users.id = $1 AND is_active = true`
@@ -178,6 +178,7 @@ func (s *UserStore) GetByID(ctx context.Context, id int64) (*User, error) {
 		&user.ID,
 		&user.Username,
 		&user.Email,
+		&user.Picture,
 		&user.Password.hash,
 		&user.CreatedAt,
 		&user.Role.ID,
@@ -199,7 +200,7 @@ func (s *UserStore) GetByID(ctx context.Context, id int64) (*User, error) {
 
 func (s *UserStore) GetByEmail(ctx context.Context, email string) (*User, error) {
 	query := `
-		SELECT users.id, username, email, password, created_at, roles.*
+		SELECT users.id, username, email, picture, password, created_at, roles.*
 		FROM users
 		JOIN roles ON (users.role_id = roles.id)
 		WHERE email = $1 AND is_active = true
@@ -213,6 +214,7 @@ func (s *UserStore) GetByEmail(ctx context.Context, email string) (*User, error)
 		&user.ID,
 		&user.Username,
 		&user.Email,
+		&user.Picture,
 		&user.Password.hash,
 		&user.CreatedAt,
 		&user.Role.ID,
@@ -284,7 +286,7 @@ func (s *UserStore) Activate(ctx context.Context, token string) error {
 
 func (s *UserStore) getUserFromInvitationToken(ctx context.Context, tx *sql.Tx, token string) (*User, error) {
 	query := `
-		SELECT u.id, u.username, u.email, u.created_at, u.is_active FROM users u JOIN user_invitations ui ON u.id = ui.user_id WHERE ui.token = $1 AND ui.expiry > $2
+		SELECT u.id, u.username, u.email, picture, u.created_at, u.is_active FROM users u JOIN user_invitations ui ON u.id = ui.user_id WHERE ui.token = $1 AND ui.expiry > $2
 	`
 
 	hash := sha256.Sum256([]byte(token))
@@ -294,7 +296,7 @@ func (s *UserStore) getUserFromInvitationToken(ctx context.Context, tx *sql.Tx, 
 	defer cancel()
 
 	user := &User{}
-	err := tx.QueryRowContext(ctx, query, hashToken, time.Now()).Scan(&user.ID, &user.Username, &user.Email, &user.CreatedAt, &user.IsActive)
+	err := tx.QueryRowContext(ctx, query, hashToken, time.Now()).Scan(&user.ID, &user.Username, &user.Email, &user.Picture, &user.CreatedAt, &user.IsActive)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:

@@ -134,13 +134,21 @@ type CreateUserTokenPayload struct {
 //	@Failure		400		{object}	error
 //	@Failure		401		{object}	error
 //	@Failure		500		{object}	error
-//	@Router			/authentication/token [post]
+//	@Router			/authentication/token [get]
 func (app *application) createTokenHandler(w http.ResponseWriter, r *http.Request) {
-	// parse payload credentials
-	var payload CreateUserTokenPayload
-	if err := readJSON(w, r, &payload); err != nil {
-		app.badRequestResponse(w, r, err)
+	// Ambil parameter dari URL
+	email := r.URL.Query().Get("email")
+	password := r.URL.Query().Get("password")
+
+	if email == "" || password == "" {
+		app.badRequestResponse(w, r, fmt.Errorf("email dan password harus disertakan"))
 		return
+	}
+
+	// Buat payload dari parameter
+	payload := CreateUserTokenPayload{
+		Email:    email,
+		Password: password,
 	}
 
 	if err := Validate.Struct(payload); err != nil {
@@ -181,7 +189,40 @@ func (app *application) createTokenHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusCreated, token); err != nil {
+	// set token in cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+	})
+
+	if err := app.jsonResponse(w, http.StatusCreated, map[string]string{"message": "token created and set in cookie"}); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
+
+// logoutHandler godoc
+//
+//	@Summary		Logs out a user
+//	@Description	Logs out a user
+//	@Tags			authentication
+//	@Produce		json
+//	@Success		204	{object}	string	"User logged out"
+//	@Failure		500	{object}	error
+//	@Router			/authentication/logout [get]
+func (app *application) logoutHandler(w http.ResponseWriter, r *http.Request) {
+	// set token in cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+	})
+
+	if err := app.jsonResponse(w, http.StatusCreated, map[string]string{"message": "token created and set in cookie"}); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

@@ -1,10 +1,47 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store"
 )
+
+// GetCatalogue gdoc
+//
+//	@Summary		fetch a catalogue
+//	@Description	fetch a catalogue by slug toko and slug product
+//	@Tags			catalogue
+//	@Accept			json
+//	@Produce		json
+//	@Param			slug_toko		path		string	true	"slug toko"
+//	@Param			slug_product	path		string	true	"slug product"
+//	@Success		200				{object}	store.Product
+//	@Failure		404				{object}	error
+//	@Failure		500				{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/catalogue/{slug_toko}/{slug_product} [get]
+func (app *application) getProductHandler(w http.ResponseWriter, r *http.Request) {
+	slugToko := chi.URLParam(r, "slug_toko")
+	slugProduct := chi.URLParam(r, "slug_product")
+
+	ctx := r.Context()
+	product, err := app.store.Products.GetProduct(ctx, slugToko, slugProduct)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, product); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
 
 // GetCatalogueFeed gdoc
 //
@@ -20,11 +57,10 @@ import (
 //	@Success		200		{object}	[]store.Product
 //	@Failure		400		{object}	error
 //	@Failure		500		{object}	error
-//	@Security		ApiKeyAuth
 //	@Router			/catalogue/feed [get]
 func (app *application) getProductFeedHandler(w http.ResponseWriter, r *http.Request) {
 	fq := store.PaginatedFeedQuery{
-		Limit:    12,
+		Limit:    24,
 		Offset:   0,
 		Sort:     "desc",
 		Category: "",
@@ -68,11 +104,10 @@ func (app *application) getProductFeedHandler(w http.ResponseWriter, r *http.Req
 //	@Success		200			{object}	[]store.Product
 //	@Failure		400			{object}	error
 //	@Failure		500			{object}	error
-//	@Security		ApiKeyAuth
 //	@Router			/catalogue [get]
 func (app *application) getProductCategoryFeed(w http.ResponseWriter, r *http.Request) {
 	fq := store.PaginatedFeedQuery{
-		Limit:    12,
+		Limit:    24,
 		Offset:   0,
 		Sort:     "desc",
 		Category: "",
@@ -93,7 +128,7 @@ func (app *application) getProductCategoryFeed(w http.ResponseWriter, r *http.Re
 	ctx := r.Context()
 
 	var products []*store.Product
-	if fq.Category == "" || fq.Search == "" || fq.Offset == 0 {
+	if fq.Category == "" && fq.Search == "" && fq.Offset == 0 {
 		products, err = app.store.Products.GetAllProduct(ctx, fq)
 	} else {
 		products, err = app.store.Products.GetProductCategoryFeed(ctx, fq)

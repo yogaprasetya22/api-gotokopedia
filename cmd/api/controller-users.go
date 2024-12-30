@@ -5,12 +5,37 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/yogaprasetya22/api-gotokopedia/internal/store" 
+	"github.com/yogaprasetya22/api-gotokopedia/internal/store"
 )
 
 type userKey string
 
 const userCtx userKey = "user"
+
+type CurrentUser struct {
+	*store.User
+	Following store.Follower `json:"following"`
+}
+
+// GetCurrentUser godoc
+//
+//	@Summary		Fetches the current user
+//	@Description	Fetches the current user profile
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	store.User
+//	@Failure		400	{object}	error
+//	@Failure		500	{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/users/current [get]
+func (app *application) getCurrentUserHandler(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r)
+
+	if err := app.jsonResponse(w, http.StatusOK, user); err != nil {
+		app.internalServerError(w, r, err)
+	}
+}
 
 // GetUser godoc
 //
@@ -33,18 +58,17 @@ func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := app.store.Users.GetByID(r.Context(), userID)
+	user, err := app.getUser(r.Context(), userID)
 	if err != nil {
 		switch err {
 		case store.ErrNotFound:
-			app.notFoundError(w, r, err)
+			app.notFoundResponse(w, r, err)
 			return
 		default:
 			app.internalServerError(w, r, err)
 			return
 		}
 	}
-
 
 	if err := app.jsonResponse(w, http.StatusOK, user); err != nil {
 		app.internalServerError(w, r, err)
@@ -54,7 +78,7 @@ func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 // FollowUser godoc
 //
 //	@Summary		Follows a user
-//	@Description	Follows a user by IDs
+//	@Description	Follows a user by ID
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
@@ -66,6 +90,7 @@ func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 //	@Router			/users/{userID}/follow [put]
 func (app *application) followUserHandler(w http.ResponseWriter, r *http.Request) {
 	followerUser := getUserFromContext(r)
+
 	followedID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
@@ -74,7 +99,7 @@ func (app *application) followUserHandler(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 
-	if err := app.store.Follow.Follow(ctx, followerUser.ID, followedID); err != nil {
+	if err := app.store.Follow.Follow(ctx, followedID, followerUser.ID); err != nil {
 		switch err {
 		case store.ErrConflict:
 			app.conflictResponse(w, r, err)
@@ -105,18 +130,19 @@ func (app *application) followUserHandler(w http.ResponseWriter, r *http.Request
 //	@Router			/users/{userID}/unfollow [put]
 func (app *application) unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	followerUser := getUserFromContext(r)
+
 	unfollowedID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
-
 	ctx := r.Context()
 
 	if err := app.store.Follow.Unfollow(ctx, followerUser.ID, unfollowedID); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
+
 	if err := app.jsonResponse(w, http.StatusNoContent, nil); err != nil {
 		app.internalServerError(w, r, err)
 	}
@@ -125,11 +151,10 @@ func (app *application) unfollowUserHandler(w http.ResponseWriter, r *http.Reque
 // ActivateUser godoc
 //
 //	@Summary		Activates/Register a user
-//	@Description	Activates/Register a user by token
+//	@Description	Activates/Register a user by invitation token
 //	@Tags			users
-//	@Accept			json
 //	@Produce		json
-//	@Param			token	path		string	true	"Activation token"
+//	@Param			token	path		string	true	"Invitation token"
 //	@Success		204		{string}	string	"User activated"
 //	@Failure		404		{object}	error
 //	@Failure		500		{object}	error
@@ -142,17 +167,16 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		switch err {
 		case store.ErrNotFound:
-			app.notFoundError(w, r, err)
+			app.notFoundResponse(w, r, err)
 		default:
 			app.internalServerError(w, r, err)
 		}
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusNoContent, nil); err != nil {
+	if err := app.jsonResponse(w, http.StatusNoContent, ""); err != nil {
 		app.internalServerError(w, r, err)
 	}
-
 }
 
 func getUserFromContext(r *http.Request) *store.User {

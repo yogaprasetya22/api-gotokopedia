@@ -16,7 +16,10 @@ var (
 
 type Storage struct {
 	Products interface {
+		GetProduct(ctx context.Context, slug_toko, slug_product string) (*DetailProduct, error)
+		GetProductByTokos(ctx context.Context, slug_toko string, query PaginatedFeedQuery) ([]*Product, error)
 		GetByID(context.Context, int64) (*Product, error)
+		GetByTokoID(context.Context, int64) ([]*Product, error)
 		GetProductFeed(context.Context, []int64, PaginatedFeedQuery) ([]*Product, error)
 		GetProductCategoryFeed(context.Context, PaginatedFeedQuery) ([]*Product, error)
 		GetAllProduct(context.Context, PaginatedFeedQuery) ([]*Product, error)
@@ -25,6 +28,7 @@ type Storage struct {
 		Delete(context.Context, int64) error
 	}
 	Categoris interface {
+		GetAll(context.Context) ([]*Category, error)
 		GetByID(context.Context, int64) (*Category, error)
 		GetBySlug(context.Context, string) (*Category, error)
 		Create(context.Context, *Category) error
@@ -49,6 +53,7 @@ type Storage struct {
 		Unfollow(ctx context.Context, followerID, userID int64) error
 	}
 	Comments interface {
+		GetComments(context.Context, string, PaginatedFeedQuery) (MetaCommentPaginated, error)
 		GetByProductID(context.Context, int64) ([]Comment, error)
 		GetByID(context.Context, int64) (*Comment, error)
 		Create(context.Context, *Comment) error
@@ -84,4 +89,3 @@ func withTx(db *sql.DB, ctx context.Context, f func(tx *sql.Tx) error) error {
 
 	return tx.Commit()
 }
-

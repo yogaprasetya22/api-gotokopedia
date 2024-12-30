@@ -18,11 +18,8 @@ definitions:
       content:
         maxLength: 255
         type: string
-      user_id:
-        type: integer
     required:
     - content
-    - user_id
     type: object
   main.CreateProductPayload:
     properties:
@@ -125,8 +122,6 @@ definitions:
       content:
         maxLength: 255
         type: string
-      user_id:
-        type: integer
     type: object
   main.UpdateProductPayload:
     properties:
@@ -184,6 +179,8 @@ definitions:
         type: integer
       product_id:
         type: integer
+      rating:
+        type: number
       updated_at:
         type: string
       user:
@@ -195,10 +192,6 @@ definitions:
     properties:
       category:
         $ref: '#/definitions/store.Category'
-      comments:
-        items:
-          $ref: '#/definitions/store.Comment'
-        type: array
       country:
         type: string
       created_at:
@@ -254,29 +247,20 @@ definitions:
   store.Toko:
     properties:
       country:
-        description: Store's country
         type: string
       created_at:
-        description: Timestamp of creation
         type: string
       id:
-        description: Primary key
         type: integer
       image_profile:
-        description: Optional profile image
         type: string
       name:
-        description: Store name
         type: string
       slug:
-        description: Unique slug for the store
         type: string
       user:
-        allOf:
-        - $ref: '#/definitions/store.User'
-        description: User who owns the store
+        $ref: '#/definitions/store.User'
       user_id:
-        description: Foreign key to users table
         type: integer
     type: object
   store.User:
@@ -302,18 +286,36 @@ definitions:
     type: object
 info:
   contact:
-    email: support@swagger.io
+    email: mochammad.yogaprasetya112@gmail.com
     name: API Support
-    url: http://www.swagger.io/support
-  description: API for Tokopedia
-  license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
-  termsOfService: http://swagger.io/terms/
+    url: http://www.myogaprasetya.my.id
+  description: |-
+    API ini menggunakan mekanisme rate limiter untuk membatasi jumlah permintaan yang dapat dilakukan oleh setiap klien dalam jangka waktu tertentu.
+    Hal ini bertujuan untuk mencegah penyalahgunaan API, memastikan kinerja yang stabil, dan melindungi server dari potensi serangan seperti brute force atau DDoS.
+    Rate limiter ini didukung oleh Redis sebagai penyimpanan sementara yang cepat dan andal untuk melacak jumlah permintaan setiap klien berdasarkan API key atau alamat IP mereka.
+    Redis digunakan karena kemampuannya yang tinggi dalam menangani data secara real-time dengan latensi rendah.
+    Jika batas permintaan terlampaui, klien akan menerima respons dengan kode status 429 (Too Many Requests).
+  termsOfService: http://www.myogaprasetya.my.id
   title: Tokopedia API
 paths:
+  /authentication/logout:
+    get:
+      description: Logs out a user
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: User logged out
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Logs out a user
+      tags:
+      - authentication
   /authentication/token:
-    post:
+    get:
       consumes:
       - application/json
       description: Creates a token for a user
@@ -412,17 +414,229 @@ paths:
         "500":
           description: Internal Server Error
           schema: {}
-      security:
-      - ApiKeyAuth: []
       summary: fetch catalogue category feed
       tags:
       - catalogue
+  /catalogue/{slug_toko}:
+    get:
+      consumes:
+      - application/json
+      description: fetch a toko by slug toko and slug product
+      parameters:
+      - description: slug toko
+        in: path
+        name: slug_toko
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Product'
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: fetch a toko
+      tags:
+      - catalogue
+  /catalogue/{slug_toko}/{slug_product}:
+    get:
+      consumes:
+      - application/json
+      description: fetch a catalogue by slug toko and slug product
+      parameters:
+      - description: slug toko
+        in: path
+        name: slug_toko
+        required: true
+        type: string
+      - description: slug product
+        in: path
+        name: slug_product
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Product'
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: fetch a catalogue
+      tags:
+      - catalogue
+  /catalogue/feed:
+    get:
+      consumes:
+      - application/json
+      description: fetch catalogue feed with pagination
+      parameters:
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: offset
+        in: query
+        name: offset
+        type: integer
+      - description: sort
+        in: query
+        name: sort
+        type: string
+      - description: search
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/store.Product'
+            type: array
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: fetch catalogue feed
+      tags:
+      - catalogue
+  /category:
+    get:
+      consumes:
+      - application/json
+      description: get all category
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/store.Category'
+            type: array
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: get all category
+      tags:
+      - category
     post:
       consumes:
       - application/json
-      description: create catalogue
+      description: create category
       parameters:
-      - description: catalogue creation payload
+      - description: category creation payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.Category'
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: create category
+      tags:
+      - category
+  /comment/{slug}:
+    get:
+      consumes:
+      - application/json
+      description: Get all comments for a product
+      parameters:
+      - description: Product Slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: offset
+        in: query
+        name: offset
+        type: integer
+      - description: sort
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/store.Comment'
+            type: array
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Get Comments
+      tags:
+      - comment
+  /health:
+    get:
+      description: Healthcheck endpoint
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+      summary: Healthcheck
+      tags:
+      - ops
+  /product:
+    post:
+      consumes:
+      - application/json
+      description: create product
+      parameters:
+      - description: product creation payload
         in: body
         name: payload
         required: true
@@ -446,16 +660,16 @@ paths:
           schema: {}
       security:
       - ApiKeyAuth: []
-      summary: create catalogue
+      summary: create product
       tags:
-      - catalogue
-  /catalogue/{id}:
+      - product
+  /product/{id}:
     delete:
       consumes:
       - application/json
-      description: Delete a Catalogue by ID
+      description: Delete a product by ID
       parameters:
-      - description: Catalogue ID
+      - description: product ID
         in: path
         name: id
         required: true
@@ -475,48 +689,20 @@ paths:
           schema: {}
       security:
       - ApiKeyAuth: []
-      summary: Deletes a Catalogue
+      summary: Deletes a product
       tags:
-      - catalogue
-    get:
-      consumes:
-      - application/json
-      description: fetch a catalogue by id
-      parameters:
-      - description: catalogue id
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/store.Product'
-        "404":
-          description: Not Found
-          schema: {}
-        "500":
-          description: Internal Server Error
-          schema: {}
-      security:
-      - ApiKeyAuth: []
-      summary: fetch a catalogue
-      tags:
-      - catalogue
+      - product
     patch:
       consumes:
       - application/json
-      description: Updates a Catalogue by ID
+      description: Updates a product by ID
       parameters:
-      - description: Catalogue ID
+      - description: product ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Catalogue payload
+      - description: product payload
         in: body
         name: payload
         required: true
@@ -543,10 +729,10 @@ paths:
           schema: {}
       security:
       - ApiKeyAuth: []
-      summary: Updates a Catalogue
+      summary: Updates a product
       tags:
-      - catalogue
-  /catalogue/{productID}/comment:
+      - product
+  /product/{productID}/comment:
     post:
       consumes:
       - application/json
@@ -584,7 +770,7 @@ paths:
       summary: Create Comment
       tags:
       - comment
-  /catalogue/{productID}/comment/{id}:
+  /product/{productID}/comment/{id}:
     delete:
       consumes:
       - application/json
@@ -652,6 +838,9 @@ paths:
         "401":
           description: Unauthorized
           schema: {}
+        "403":
+          description: Forbidden
+          schema: {}
         "404":
           description: Not Found
           schema: {}
@@ -663,94 +852,6 @@ paths:
       summary: Updates a Comment
       tags:
       - comment
-  /catalogue/feed:
-    get:
-      consumes:
-      - application/json
-      description: fetch catalogue feed with pagination
-      parameters:
-      - description: limit
-        in: query
-        name: limit
-        type: integer
-      - description: offset
-        in: query
-        name: offset
-        type: integer
-      - description: sort
-        in: query
-        name: sort
-        type: string
-      - description: search
-        in: query
-        name: search
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/store.Product'
-            type: array
-        "400":
-          description: Bad Request
-          schema: {}
-        "500":
-          description: Internal Server Error
-          schema: {}
-      security:
-      - ApiKeyAuth: []
-      summary: fetch catalogue feed
-      tags:
-      - catalogue
-  /category:
-    post:
-      consumes:
-      - application/json
-      description: create category
-      parameters:
-      - description: category creation payload
-        in: body
-        name: payload
-        required: true
-        schema:
-          $ref: '#/definitions/main.CreateCategoryRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/store.Category'
-        "400":
-          description: Bad Request
-          schema: {}
-        "401":
-          description: Unauthorized
-          schema: {}
-        "500":
-          description: Internal Server Error
-          schema: {}
-      security:
-      - ApiKeyAuth: []
-      summary: create category
-      tags:
-      - category
-  /health:
-    get:
-      description: Healthcheck endpoint
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: ok
-          schema:
-            type: string
-      summary: Healthcheck
-      tags:
-      - ops
   /toko:
     post:
       consumes:
@@ -782,6 +883,49 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: create toko
+      tags:
+      - toko
+  /toko/{slug_toko}:
+    get:
+      consumes:
+      - application/json
+      description: fetch a product toko by slug toko and slug product
+      parameters:
+      - description: slug toko
+        in: path
+        name: slug_toko
+        required: true
+        type: string
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: offset
+        in: query
+        name: offset
+        type: integer
+      - description: sort
+        in: query
+        name: sort
+        type: string
+      - description: search
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Product'
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: fetch a product toko
       tags:
       - toko
   /users/{id}:
@@ -820,7 +964,7 @@ paths:
     put:
       consumes:
       - application/json
-      description: Follows a user by IDs
+      description: Follows a user by ID
       parameters:
       - description: User ID
         in: path
@@ -876,11 +1020,9 @@ paths:
       - users
   /users/activate/{token}:
     put:
-      consumes:
-      - application/json
-      description: Activates/Register a user by token
+      description: Activates/Register a user by invitation token
       parameters:
-      - description: Activation token
+      - description: Invitation token
         in: path
         name: token
         required: true
@@ -901,6 +1043,29 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Activates/Register a user
+      tags:
+      - users
+  /users/current:
+    get:
+      consumes:
+      - application/json
+      description: Fetches the current user profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.User'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Fetches the current user
       tags:
       - users
 securityDefinitions:

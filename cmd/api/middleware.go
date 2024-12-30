@@ -13,45 +13,39 @@ import (
 )
 
 func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			app.unauthorizedErrorResponse(w, r, fmt.Errorf("authorization header is missing"))
-			return
-		}
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        cookie, err := r.Cookie("auth_token")
+        if err != nil {
+            app.unauthorizedErrorResponse(w, r, fmt.Errorf("auth token cookie is missing"))
+            return
+        }
 
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			app.unauthorizedErrorResponse(w, r, fmt.Errorf("authorization header is malformed"))
-			return
-		}
+        token := cookie.Value
+        jwtToken, err := app.authenticator.ValidateToken(token)
+        if err != nil {
+            app.unauthorizedErrorResponse(w, r, err)
+            return
+        }
 
-		token := parts[1]
-		jwtToken, err := app.authenticator.ValidateToken(token)
-		if err != nil {
-			app.unauthorizedErrorResponse(w, r, err)
-			return
-		}
+        claims, _ := jwtToken.Claims.(jwt.MapClaims)
 
-		claims, _ := jwtToken.Claims.(jwt.MapClaims)
+        userID, err := strconv.ParseInt(fmt.Sprintf("%.f", claims["sub"]), 10, 64)
+        if err != nil {
+            app.unauthorizedErrorResponse(w, r, err)
+            return
+        }
 
-		userID, err := strconv.ParseInt(fmt.Sprintf("%.f", claims["sub"]), 10, 64)
-		if err != nil {
-			app.unauthorizedErrorResponse(w, r, err)
-			return
-		}
+        ctx := r.Context()
 
-		ctx := r.Context()
+        user, err := app.getUser(ctx, userID)
+        if err != nil {
+            app.unauthorizedErrorResponse(w, r, err)
+            return
+        }
 
-		user, err := app.getUser(ctx, userID)
-		if err != nil {
-			app.unauthorizedErrorResponse(w, r, err)
-			return
-		}
-
-		ctx = context.WithValue(ctx, userCtx, user)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+        ctx = context.WithValue(ctx, userCtx, user)
+        next.ServeHTTP(w, r.WithContext(ctx))
+    })
 }
 
 func (app *application) BasicAuthMiddleware() func(http.Handler) http.Handler {
@@ -93,39 +87,43 @@ func (app *application) BasicAuthMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-func (app *application) checkPostOwnership(requiredRole string, next http.HandlerFunc) http.HandlerFunc {
+func (app *application) checkProductOwnership(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user := getUserFromContext(r)
-		post := getProductFromContext(r)
+		product := getProductFromContext(r)
 
-		if post.Toko.UserID == user.ID {
+		if product.Toko.UserID == user.ID {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		allowed, err := app.checkRolePrecedence(r.Context(), user, requiredRole)
-		if err != nil {
-			app.internalServerError(w, r, err)
-			return
-		}
+		app.forbiddenResponse(w, r)
 
-		if !allowed {
-			app.forbiddenResponse(w, r)
-			return
-		}
-
-		next.ServeHTTP(w, r)
 	})
 }
 
-func (app *application) checkRolePrecedence(ctx context.Context, user *store.User, roleName string) (bool, error) {
-	role, err := app.store.Roles.GetByName(ctx, roleName)
-	if err != nil {
-		return false, err
-	}
+func (app *application) checkCommentOwnership(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUserFromContext(r)
+		comment := getCommentFromContext(r)
 
-	return user.Role.Level >= role.Level, nil
+		if comment.UserID == user.ID {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		app.forbiddenResponse(w, r)
+	})
 }
+
+// func (app *application) checkRolePrecedence(ctx context.Context, user *store.User, roleName string) (bool, error) {
+// 	role, err := app.store.Roles.GetByName(ctx, roleName)
+// 	if err != nil {
+// 		return false, err
+// 	}
+
+// 	return user.Role.Level >= role.Level, nil
+// }
 
 func (app *application) getUser(ctx context.Context, userID int64) (*store.User, error) {
 	if !app.config.redisCfg.enabled {
@@ -151,15 +149,15 @@ func (app *application) getUser(ctx context.Context, userID int64) (*store.User,
 	return user, nil
 }
 
-// func (app *application) RateLimiterMiddleware(next http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		if app.config.rateLimiter.Enabled {
-// 			if allow, retryAfter := app.rateLimiter.Allow(r.RemoteAddr); !allow {
-// 				app.rateLimitExceededResponse(w, r, retryAfter.String())
-// 				return
-// 			}
-// 		}
+func (app *application) RateLimiterMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if app.config.rateLimiter.Enabled {
+			if allow, retryAfter := app.rateLimiter.Allow(r.RemoteAddr); !allow {
+				app.rateLimitExceededResponse(w, r, retryAfter.String())
+				return
+			}
+		}
 
-// 		next.ServeHTTP(w, r)
-// 	})
-// }
+		next.ServeHTTP(w, r)
+	})
+}

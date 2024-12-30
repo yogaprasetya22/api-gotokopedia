@@ -6,14 +6,14 @@ import (
 )
 
 type Toko struct {
-	ID           int64  `json:"id"`                      // Primary key
-	UserID       int64  `json:"user_id"`                 // Foreign key to users table
-	Slug         string `json:"slug"`                    // Unique slug for the store
-	Name         string `json:"name"`                    // Store name
-	ImageProfile string `json:"image_profile,omitempty"` // Optional profile image
-	Country      string `json:"country"`                 // Store's country
-	CreatedAt    string `json:"created_at"`              // Timestamp of creation
-	User         User   `json:"user"`                    // User who owns the store
+	ID           int64  `json:"id,omitempty"`
+	UserID       int64  `json:"user_id,omitempty"`
+	Slug         string `json:"slug"`
+	Name         string `json:"name"`
+	ImageProfile string `json:"image_profile"`
+	Country      string `json:"country"`
+	CreatedAt    string `json:"created_at"`
+	User         User   `json:"user"`
 }
 
 type TokoStore struct {
@@ -39,14 +39,13 @@ func (s *TokoStore) Exists(ctx context.Context, slug string) (bool, error) {
 }
 
 func (s *TokoStore) Create(ctx context.Context, t *Toko) error {
-	// Periksa apakah toko dengan slug yang sama sudah ada
 	exists, err := s.Exists(ctx, t.Slug)
 	if err != nil {
 		return err
 	}
 
 	if exists {
-		return nil // Jika sudah ada, tidak melakukan operasi create
+		return nil
 	}
 
 	const query = `INSERT INTO tokos (user_id, slug, name, image_profile, country) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`
@@ -92,19 +91,29 @@ func (s *TokoStore) GetByID(ctx context.Context, id int64) (*Toko, error) {
 }
 
 func (s *TokoStore) GetBySlug(ctx context.Context, slug string) (*Toko, error) {
-	const query = `SELECT id, user_id, slug, name, image_profile, country FROM tokos WHERE slug = $1`
+	const query = `SELECT t.id, t.user_id, t.slug, t.name, t.image_profile, t.country, t.created_at,
+				u.id, u.username, u.email, u.picture, u.created_at
+				FROM tokos t
+				JOIN users u ON t.user_id = u.id
+				WHERE t.slug = $1`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	toko := &Toko{}
-	err := s.db.QueryRowContext(ctx, query, slug).Scan(&toko.ID, &toko.UserID, &toko.Slug, &toko.Name, &toko.ImageProfile, &toko.Country)
+	t := &Toko{}
+	user := &User{}
+	err := s.db.QueryRowContext(ctx, query, slug).Scan(
+		&t.ID, &t.UserID, &t.Slug, &t.Name, &t.ImageProfile, &t.Country, &t.CreatedAt,
+		&user.ID, &user.Username, &user.Email, &user.Picture, &user.CreatedAt)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		switch {
+		case err == sql.ErrNoRows:
 			return nil, ErrNotFound
+		default:
+			return nil, err
 		}
-		return nil, err
 	}
 
-	return toko, nil
+	t.User = *user
+	return t, nil
 }

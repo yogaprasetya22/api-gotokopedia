@@ -32,20 +32,20 @@ type CreateProductPayload struct {
 	CategoryID    int64    `json:"category_id" validate:"required"`
 }
 
-// CreateCatalogue gdoc
+// CreateProduct gdoc
 //
-//	@Summary		create catalogue
-//	@Description	create catalogue
-//	@Tags			catalogue
+//	@Summary		create product
+//	@Description	create product
+//	@Tags			product
 //	@Accept			json
 //	@Produce		json
-//	@Param			payload	body		CreateProductPayload	true	"catalogue creation payload"
+//	@Param			payload	body		CreateProductPayload	true	"product creation payload"
 //	@Success		201		{object}	store.Product
 //	@Failure		400		{object}	error
 //	@Failure		401		{object}	error
 //	@Failure		500		{object}	error
 //	@Security		ApiKeyAuth
-//	@Router			/catalogue [post]
+//	@Router			/product [post]
 func (app *application) createProductHandler(w http.ResponseWriter, r *http.Request) {
 	var payload CreateProductPayload
 
@@ -93,37 +93,6 @@ func (app *application) createProductHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-// GetCatalogue gdoc
-//
-//	@Summary		fetch a catalogue
-//	@Description	fetch a catalogue by id
-//	@Tags			catalogue
-//	@Accept			json
-//	@Produce		json
-//	@Param			id	path		int	true	"catalogue id"
-//	@Success		200	{object}	store.Product
-//	@Failure		404	{object}	error
-//	@Failure		500	{object}	error
-//	@Security		ApiKeyAuth
-//	@Router			/catalogue/{id} [get]
-func (app *application) getProductHandler(w http.ResponseWriter, r *http.Request) {
-	product := getProductFromContext(r)
-
-	ctx := r.Context()
-
-	toko, _ := app.store.Tokos.GetByID(ctx, product.Toko.ID)
-	category, _ := app.store.Categoris.GetByID(ctx, product.Category.ID)
-	comments, _ := app.store.Comments.GetByProductID(ctx, product.ID)
-
-	product.Toko = *toko
-	product.Category = *category
-	product.Comments = comments
-
-	if err := app.jsonResponse(w, http.StatusOK, product); err != nil {
-		app.internalServerError(w, r, err)
-	}
-}
-
 type UpdateProductPayload struct {
 	Name          *string   `json:"name" validate:"omitempty"`
 	Slug          *string   `json:"slug" validate:"omitempty,max=100"`
@@ -141,22 +110,22 @@ type UpdateProductPayload struct {
 	Version       *int      `json:"version"`
 }
 
-// UpdateCatalogue godoc
+// UpdateProduct godoc
 //
-//	@Summary		Updates a Catalogue
-//	@Description	Updates a Catalogue by ID
-//	@Tags			catalogue
+//	@Summary		Updates a product
+//	@Description	Updates a product by ID
+//	@Tags			product
 //	@Accept			json
 //	@Produce		json
-//	@Param			id		path		int						true	"Catalogue ID"
-//	@Param			payload	body		UpdateProductPayload	true	"Catalogue payload"
+//	@Param			id		path		int						true	"product ID"
+//	@Param			payload	body		UpdateProductPayload	true	"product payload"
 //	@Success		200		{object}	store.Product
 //	@Failure		400		{object}	error
 //	@Failure		401		{object}	error
 //	@Failure		404		{object}	error
 //	@Failure		500		{object}	error
 //	@Security		ApiKeyAuth
-//	@Router			/catalogue/{id} [patch]
+//	@Router			/product/{id} [patch]
 func (app *application) updateProductHandler(w http.ResponseWriter, r *http.Request) {
 	product := getProductFromContext(r)
 
@@ -224,19 +193,19 @@ func (app *application) updateProductHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-// DeleteCatalogue godoc
+// DeleteProduct godoc
 //
-//	@Summary		Deletes a Catalogue
-//	@Description	Delete a Catalogue by ID
-//	@Tags			catalogue
+//	@Summary		Deletes a product
+//	@Description	Delete a product by ID
+//	@Tags			product
 //	@Accept			json
 //	@Produce		json
-//	@Param			id	path		int	true	"Catalogue ID"
+//	@Param			id	path		int	true	"product ID"
 //	@Success		204	{object}	string
 //	@Failure		404	{object}	error
 //	@Failure		500	{object}	error
 //	@Security		ApiKeyAuth
-//	@Router			/catalogue/{id} [delete]
+//	@Router			/product/{id} [delete]
 func (app *application) deleteProductHandler(w http.ResponseWriter, r *http.Request) {
 	idParam := chi.URLParam(r, "productID")
 	id, err := strconv.ParseInt(idParam, 10, 64)
@@ -249,7 +218,7 @@ func (app *application) deleteProductHandler(w http.ResponseWriter, r *http.Requ
 	if err := app.store.Products.Delete(ctx, id); err != nil {
 		switch {
 		case errors.Is(err, store.ErrNotFound):
-			app.notFoundError(w, r, err)
+			app.notFoundResponse(w, r, err)
 		default:
 			app.internalServerError(w, r, err)
 
@@ -274,12 +243,16 @@ func (app *application) productContextMiddleware(next http.Handler) http.Handler
 		if err != nil {
 			switch {
 			case errors.Is(err, store.ErrNotFound):
-				app.notFoundError(w, r, err)
+				app.notFoundResponse(w, r, err)
 			default:
 				app.internalServerError(w, r, err)
 			}
 			return
 		}
+
+		toko, _ := app.store.Tokos.GetByID(ctx, product.Toko.ID)
+
+		product.Toko = *toko
 
 		ctx = context.WithValue(ctx, productCtx, product)
 		next.ServeHTTP(w, r.WithContext(ctx))

@@ -8,7 +8,6 @@ CREATE TABLE
         price DOUBLE PRECISION NOT NULL,
         discount_price DOUBLE PRECISION NOT NULL,
         discount DOUBLE PRECISION NOT NULL,
-        rating DOUBLE PRECISION NOT NULL,
         estimation TEXT NOT NULL,
         stock INTEGER NOT NULL,
         sold INTEGER NOT NULL,

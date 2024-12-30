@@ -15,6 +15,31 @@ type CreateCategoryRequest struct {
 	Description string `json:"description,omitempty" validate:"required"`
 }
 
+// GetAllCategory godoc
+//
+//	@Summary		get all category
+//	@Description	get all category
+//	@Tags			category
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{array}		store.Category
+//	@Failure		400	{object}	error
+//	@Failure		401	{object}	error
+//	@Failure		500	{object}	error
+//	@Router			/category [get]
+func (app *application) getAllCategoryHandler(w http.ResponseWriter, r *http.Request) {
+	categories, err := app.store.Categoris.GetAll(r.Context())
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, categories); err != nil {
+		app.internalServerError(w, r, err)
+	}
+
+}
+
 // CreateCategory gdoc
 //
 //	@Summary		create category
@@ -59,4 +84,3 @@ func (app *application) createCategoryHandler(w http.ResponseWriter, r *http.Req
 		app.internalServerError(w, r, err)
 	}
 }
-

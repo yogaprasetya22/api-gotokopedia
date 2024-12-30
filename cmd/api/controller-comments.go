@@ -16,7 +16,55 @@ const CommentCtx commentKey = "comment"
 
 type CreateCommentsPayload struct {
 	Content string `json:"content" validate:"required,max=255"`
-	UserID  int64  `json:"user_id" validate:"required"`
+}
+
+// GetComments godoc
+//
+//	@Summary		Get Comments
+//	@Description	Get all comments for a product
+//	@Tags			comment
+//	@Accept			json
+//	@Produce		json
+//	@Param			slug	path		string	true	"Product Slug"
+//	@Param			limit	query		int		false	"limit"
+//	@Param			offset	query		int		false	"offset"
+//	@Param			sort	query		string	false	"sort"
+//	@Success		200		{array}		store.Comment
+//	@Failure		404		{object}	error
+//	@Failure		500		{object}	error
+//	@Router			/comment/{slug} [get]
+func (app *application) getCommentsHandler(w http.ResponseWriter, r *http.Request) {
+	slugProduct := chi.URLParam(r, "slug")
+
+	fq := store.PaginatedFeedQuery{
+		Limit:  5,
+		Offset: 0,
+		Sort:   "desc",
+	}
+
+	fq, err := fq.Parse(r)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	if err := Validate.Struct(fq); err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	ctx := r.Context()
+
+	comments, err := app.store.Comments.GetComments(ctx, slugProduct, fq)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusOK, comments); err != nil {
+		app.internalServerError(w, r, err)
+	}
+
 }
 
 // CreateComment godoc
@@ -33,8 +81,9 @@ type CreateCommentsPayload struct {
 //	@Failure		401			{object}	error
 //	@Failure		500			{object}	error
 //	@Security		ApiKeyAuth
-//	@Router			/catalogue/{productID}/comment [post]
+//	@Router			/product/{productID}/comment [post]
 func (app *application) createCommentHandler(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r)
 	productIDParam := chi.URLParam(r, "productID")
 	productID, err := strconv.ParseInt(productIDParam, 10, 64)
 	if err != nil {
@@ -57,7 +106,7 @@ func (app *application) createCommentHandler(w http.ResponseWriter, r *http.Requ
 
 	c := &store.Comment{
 		Content:   payload.Content,
-		UserID:    payload.UserID,
+		UserID:    user.ID,
 		ProductID: productID,
 	}
 
@@ -73,7 +122,6 @@ func (app *application) createCommentHandler(w http.ResponseWriter, r *http.Requ
 
 type UpdateCommentsPayload struct {
 	Content *string `json:"content" validate:"omitempty,max=255"`
-	UserID  *int64  `json:"user_id" validate:"omitempty"`
 }
 
 // UpdateComment godoc
@@ -89,11 +137,13 @@ type UpdateCommentsPayload struct {
 //	@Success		200			{object}	store.Comment
 //	@Failure		400			{object}	error
 //	@Failure		401			{object}	error
+//	@Failure		403			{object}	error
 //	@Failure		404			{object}	error
 //	@Failure		500			{object}	error
 //	@Security		ApiKeyAuth
-//	@Router			/catalogue/{productID}/comment/{id} [patch]
+//	@Router			/product/{productID}/comment/{id} [patch]
 func (app *application) updateCommentHandler(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r)
 	comment := getCommentFromContext(r)
 	product := getProductFromContext(r)
 
@@ -114,12 +164,8 @@ func (app *application) updateCommentHandler(w http.ResponseWriter, r *http.Requ
 	if payload.Content != nil {
 		comment.Content = *payload.Content
 	}
-	if payload.UserID != nil {
-		comment.UserID = *payload.UserID
-	}
-
-	// Always use product ID from context
 	comment.ProductID = product.ID
+	comment.UserID = user.ID
 
 	if err := app.store.Comments.Update(r.Context(), comment); err != nil {
 		app.internalServerError(w, r, err)
@@ -144,7 +190,7 @@ func (app *application) updateCommentHandler(w http.ResponseWriter, r *http.Requ
 //	@Failure		404			{object}	error
 //	@Failure		500			{object}	error
 //	@Security		ApiKeyAuth
-//	@Router			/catalogue/{productID}/comment/{id} [delete]
+//	@Router			/product/{productID}/comment/{id} [delete]
 func (app *application) deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
 	product := getProductFromContext(r)
 	idParam := chi.URLParam(r, "commentID")
@@ -158,7 +204,7 @@ func (app *application) deleteCommentHandler(w http.ResponseWriter, r *http.Requ
 	if err := app.store.Comments.Delete(ctx, id, product.ID); err != nil {
 		switch {
 		case errors.Is(err, store.ErrNotFound):
-			app.notFoundError(w, r, err)
+			app.notFoundResponse(w, r, err)
 		default:
 			app.internalServerError(w, r, err)
 
@@ -183,7 +229,7 @@ func (app *application) commentContextMiddleware(next http.Handler) http.Handler
 		if err != nil {
 			switch {
 			case errors.Is(err, store.ErrNotFound):
-				app.notFoundError(w, r, err)
+				app.notFoundResponse(w, r, err)
 			default:
 				app.internalServerError(w, r, err)
 			}

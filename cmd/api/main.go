@@ -11,6 +11,7 @@ import (
 	"github.com/yogaprasetya22/api-gotokopedia/internal/db"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/env"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/mailer"
+	"github.com/yogaprasetya22/api-gotokopedia/internal/ratelimiter"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store/cache"
 	"go.uber.org/zap"
@@ -20,27 +21,28 @@ import (
 const version = "0.1"
 
 //	@title			Tokopedia API
-//	@description	API for Tokopedia
-//	@termsOfService	http://swagger.io/terms/
+//	@description	API ini menggunakan mekanisme rate limiter untuk membatasi jumlah permintaan yang dapat dilakukan oleh setiap klien dalam jangka waktu tertentu.
+//	@description	Hal ini bertujuan untuk mencegah penyalahgunaan API, memastikan kinerja yang stabil, dan melindungi server dari potensi serangan seperti brute force atau DDoS.
+//	@description	Rate limiter ini didukung oleh Redis sebagai penyimpanan sementara yang cepat dan andal untuk melacak jumlah permintaan setiap klien berdasarkan API key atau alamat IP mereka.
+//	@description	Redis digunakan karena kemampuannya yang tinggi dalam menangani data secara real-time dengan latensi rendah.
+//	@description	Jika batas permintaan terlampaui, klien akan menerima respons dengan kode status 429 (Too Many Requests).
+
+//	@termsOfService	http://www.myogaprasetya.my.id
 
 //	@contact.name	API Support
-//	@contact.url	http://www.swagger.io/support
-//	@contact.email	support@swagger.io
-
-//	@license.name	Apache 2.0
-//	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
+//	@contact.url	http://www.myogaprasetya.my.id
+//	@contact.email	mochammad.yogaprasetya112@gmail.com
 
 // @BasePath					/api/v1
 //
 // @securityDefinitions.apikey	ApiKeyAuth
 // @in							header
 // @name						Authorization
-// @description
 func main() {
 	cfg := config{
 		addr:        env.GetString("ADDR", ":8080"),
 		apiURL:      env.GetString("EXTERNAL_URL", "localhost:8080"),
-		frontendURL: env.GetString("frontendURL", "http://localhost:5173"), // email verification
+		frontendURL: env.GetString("frontendURL", "http://localhost:3000"), // email verification
 		db: dbConfig{
 			addr:         env.GetString("DB_ADDR", "postgresql://jagres:Jagres112.@localhost:5432/socialjagres?sslmode=disable"),
 			maxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 30),
@@ -63,6 +65,11 @@ func main() {
 			password:  env.GetString("MAIL_PASSWORD", "BN69fKzVY1wIx1yV8TtIeOIt/P25MLmHzjzsMUMH5B7d"),
 			timeout:   time.Second * 5,
 			sender:    env.GetString("MAIL_SENDER", ""),
+		},
+		rateLimiter: ratelimiter.Config{
+			RequestsPerTimeFrame: env.GetInt("RATELIMITER_REQUESTS_COUNT", 20),
+			TimeFrame:            time.Second * 5,
+			Enabled:              env.GetBool("RATE_LIMITER_ENABLED", true),
 		},
 		auth: authConfig{
 			basic: basicConfig{
@@ -133,6 +140,12 @@ func main() {
 		defer rdb.Close()
 	}
 
+	// Rate limiter
+	rateLimiter := ratelimiter.NewFixedWindowLimiter(
+		cfg.rateLimiter.RequestsPerTimeFrame,
+		cfg.rateLimiter.TimeFrame,
+	)
+
 	// JWT Authenticator
 	jwtAuthenticator := auth.NewJWTAuthenticator(cfg.auth.token.secret, cfg.auth.token.iss, cfg.auth.token.iss)
 
@@ -147,6 +160,7 @@ func main() {
 		logger:        logger,
 		mailer:        mailer,
 		authenticator: jwtAuthenticator,
+		rateLimiter:   rateLimiter,
 	}
 
 	// matrucs collected
