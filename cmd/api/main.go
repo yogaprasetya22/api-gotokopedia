@@ -18,7 +18,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-const version = "0.1"
+const version = ""
 
 //	@title			Tokopedia API
 //	@description	API ini menggunakan mekanisme rate limiter untuk membatasi jumlah permintaan yang dapat dilakukan oleh setiap klien dalam jangka waktu tertentu.
