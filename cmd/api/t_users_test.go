@@ -45,7 +45,11 @@ func TestGetUser(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		req.Header.Set("Authorization", "Bearer "+testToken)
+		req.AddCookie(&http.Cookie{
+			Name:  "auth_token",
+			Value: testToken, // menggunakan token yang sudah Anda buat sebelumnya
+			Path:  "/",
+		})
 
 		rr := executeRequest(req, mux)
 
@@ -66,7 +70,11 @@ func TestGetUser(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		req.Header.Set("Authorization", "Bearer "+testToken)
+		req.AddCookie(&http.Cookie{
+			Name:  "auth_token",
+			Value: testToken, // menggunakan token yang sudah Anda buat sebelumnya
+			Path:  "/",
+		})
 
 		rr := executeRequest(req, mux)
 
@@ -94,7 +102,11 @@ func TestGetUser(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		req.Header.Set("Authorization", "Bearer "+testToken)
+		req.AddCookie(&http.Cookie{
+			Name:  "auth_token",
+			Value: testToken, // menggunakan token yang sudah Anda buat sebelumnya
+			Path:  "/",
+		})
 
 		rr := executeRequest(req, mux)
 

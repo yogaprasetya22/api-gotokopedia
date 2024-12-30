@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -32,13 +33,13 @@ func (app *application) googleCallbackHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	code := r.FormValue("code")
-	token, err := googleOauthConfig.Exchange(oauth2.NoContext, code)
+	token, err := googleOauthConfig.Exchange(context.Background(), code)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	client := googleOauthConfig.Client(oauth2.NoContext, token)
+	client := googleOauthConfig.Client(context.Background(), token)
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v3/userinfo")
 	if err != nil {
 		app.internalServerError(w, r, err)
