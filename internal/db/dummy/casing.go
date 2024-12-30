@@ -1,6 +1,5 @@
 package dummy
 
-
 type Product struct {
 	ProductName   string   `json:"product_name"`
 	Price         string   `json:"price"`
@@ -9,20 +8,21 @@ type Product struct {
 	ImageURL      []string `json:"image_url"`
 	Category      string   `json:"category"`
 	Slug          string   `json:"slug"`
-	Discount      string  `json:"discount"`
-	DiscountPrice string  `json:"discount_price"`
+	Discount      string   `json:"discount"`
+	DiscountPrice string   `json:"discount_price"`
 	Rating        string   `json:"rating"`
 	Sold          string   `json:"sold"`
 	Country       string   `json:"country"`
 	Estimation    string   `json:"estimation"`
-	Toko          struct {
-		Username  string `json:"username"`
-		TokoName  string `json:"toko_name"`
-		ImageToko string `json:"image_toko"`
-	} `json:"toko"`
+	Toko          Toko     `json:"toko"`
 }
 
-// data json
+type Toko struct {
+	Username  string `json:"username"`
+	TokoName  string `json:"toko_name"`
+	ImageToko string `json:"image_toko"`
+}
+
 var CasingData = `[
   {
     "product_name": "Sticker Laptop Casing A Case Cover Hp 840 G1",
@@ -688,7 +688,7 @@ var CasingData = `[
     "product_name": "Casing Handphone Glitter Ribbon Clear Case 11 12 13 14 15 PRO MAX - 13 PROMAX",
     "price": "Rp68.000",
     "stock": "91",
-    "description": "Tersedia Mulai dari : XR,11 s.d 15 Series<br><br>Fitur lainnya : <br>- Bahan TPU clear berkualitas tinggi<br>- Design ribbon pada bagian tengah body membuat case terlihat mewah<br>- Selain itu, terdapat aksen glitter yang mengkilap<br>- Mudah dipasang &amp; dikeluarkan<br>-⁠ Memberikan proteksi pada bagian kamera, karena lips bagian kamera sudah lebih tinggi daripada lensa<br>- Tipe XR dan 11 untuk case ini satu tipe ya Kak. Pakai tipe 11<br><br>Untuk case ribbon ini case dengan tema dan kelebihan product DIY (handmade) sehingga yg lebih ditonjolkan pada product bukan pada bagian presisi dan atau kerapihan penempatannya. tetapi memang lebih ke handmadenya di tempel satu persatu dan dikeringkan secara manual sehingga product ini tidak akan sama antara satu dengan yg lainnya. Berbeda dengan diprint oleh mesin yg pastinya akan presisi dan sama😊<br><br>Notes : bagian pita tidak disarankan terkena alcohol atau benda kasar karna akan berubah warna<br><br>Pilihan Varian :<br>- Clear Ribbon<br><br>**KETERANGAN<br><br>- Silahkan diorder , Selama tipe HP dan warna masih bisa dipilih, artinya stock barang kami masih READY. Mohon kepada customer untuk memilih tipe HP dan warna yang sesuai untuk mempercepat proses penyiapan barang dan pengiriman<br>- Jika tipe HP dan varian warna tidak bisa dipilih, artinya stock kami sedang kosong . Jika butuh bantuan/pertanyaan silahkan chat MINZEN ya<br>Happy Shopping and Have a Nice Day ^^",
+    "description": "Tersedia Mulai dari : XR,11 s.d 15 Series<br><br>Fitur lainnya : <br>- Bahan TPU clear berkualitas tinggi<br>- Design ribbon pada bagian tengah body membuat case terlihat mewah<br>- Selain itu, terdapat aksen glitter yang mengkilap<br>- Mudah dipasang &amp; dikeluarkan<br>-\\u2060 Memberikan proteksi pada bagian kamera, karena lips bagian kamera sudah lebih tinggi daripada lensa<br>- Tipe XR dan 11 untuk case ini satu tipe ya Kak. Pakai tipe 11<br><br>Untuk case ribbon ini case dengan tema dan kelebihan product DIY (handmade) sehingga yg lebih ditonjolkan pada product bukan pada bagian presisi dan atau kerapihan penempatannya. tetapi memang lebih ke handmadenya di tempel satu persatu dan dikeringkan secara manual sehingga product ini tidak akan sama antara satu dengan yg lainnya. Berbeda dengan diprint oleh mesin yg pastinya akan presisi dan sama😊<br><br>Notes : bagian pita tidak disarankan terkena alcohol atau benda kasar karna akan berubah warna<br><br>Pilihan Varian :<br>- Clear Ribbon<br><br>**KETERANGAN<br><br>- Silahkan diorder , Selama tipe HP dan warna masih bisa dipilih, artinya stock barang kami masih READY. Mohon kepada customer untuk memilih tipe HP dan warna yang sesuai untuk mempercepat proses penyiapan barang dan pengiriman<br>- Jika tipe HP dan varian warna tidak bisa dipilih, artinya stock kami sedang kosong . Jika butuh bantuan/pertanyaan silahkan chat MINZEN ya<br>Happy Shopping and Have a Nice Day ^^",
     "image_url": [
       "https://images.tokopedia.net/img/cache/500-square/VqbcmM/2024/2/23/912f7a60-8e7d-4bce-a057-7c5ec708ae8d.jpg.webp?ect=4g",
       "https://images.tokopedia.net/img/cache/500-square/VqbcmM/2024/2/23/912f7a60-8e7d-4bce-a057-7c5ec708ae8d.jpg.webp?ect=4g",
