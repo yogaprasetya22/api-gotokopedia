@@ -12,15 +12,14 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-var googleOauthConfig = &oauth2.Config{
-	RedirectURL:  "http://localhost:8080/auth/google/callback",
-	ClientID:     "775956479285-bnstik8a664i0vgu3jp91iflk5i51n8q.apps.googleusercontent.com",
-	ClientSecret: "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",
-	Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
-	Endpoint:     google.Endpoint,
-}
-
 func (app *application) googleLoginHandler(w http.ResponseWriter, r *http.Request) {
+	var googleOauthConfig = &oauth2.Config{
+		RedirectURL:  app.config.apiURL + "/auth/google/callback",
+		ClientID:     "775956479285-bnstik8a664i0vgu3jp91iflk5i51n8q.apps.googleusercontent.com",
+		ClientSecret: "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",
+		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
+		Endpoint:     google.Endpoint,
+	}
 	url := googleOauthConfig.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
@@ -30,6 +29,14 @@ func (app *application) googleCallbackHandler(w http.ResponseWriter, r *http.Req
 	if state != "state-token" {
 		http.Error(w, "Invalid state", http.StatusBadRequest)
 		return
+	}
+
+	var googleOauthConfig = &oauth2.Config{
+		RedirectURL:  app.config.apiURL + "/auth/google/callback",
+		ClientID:     "775956479285-bnstik8a664i0vgu3jp91iflk5i51n8q.apps.googleusercontent.com",
+		ClientSecret: "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",
+		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
+		Endpoint:     google.Endpoint,
 	}
 
 	code := r.FormValue("code")
