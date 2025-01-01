@@ -13,39 +13,45 @@ import (
 )
 
 func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        cookie, err := r.Cookie("auth_token")
-        if err != nil {
-            app.unauthorizedErrorResponse(w, r, fmt.Errorf("auth token cookie is missing"))
-            return
-        }
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		session, err := app.session.Get(r, "auth_token")
+		app.logger.Debug("session", session)
+		if err != nil || session.Values["auth_token"] == nil {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("auth token not found"))
+			return
+		}
 
-        token := cookie.Value
-        jwtToken, err := app.authenticator.ValidateToken(token)
-        if err != nil {
-            app.unauthorizedErrorResponse(w, r, err)
-            return
-        }
+		token, ok := session.Values["auth_token"].(string)
+		if !ok {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("invalid auth token"))
+			return
+		}
 
-        claims, _ := jwtToken.Claims.(jwt.MapClaims)
+		jwtToken, err := app.authenticator.ValidateToken(token)
+		if err != nil {
+			app.unauthorizedErrorResponse(w, r, err)
+			return
+		}
 
-        userID, err := strconv.ParseInt(fmt.Sprintf("%.f", claims["sub"]), 10, 64)
-        if err != nil {
-            app.unauthorizedErrorResponse(w, r, err)
-            return
-        }
+		claims, _ := jwtToken.Claims.(jwt.MapClaims)
 
-        ctx := r.Context()
+		userID, err := strconv.ParseInt(fmt.Sprintf("%.f", claims["sub"]), 10, 64)
+		if err != nil {
+			app.unauthorizedErrorResponse(w, r, err)
+			return
+		}
 
-        user, err := app.getUser(ctx, userID)
-        if err != nil {
-            app.unauthorizedErrorResponse(w, r, err)
-            return
-        }
+		ctx := r.Context()
 
-        ctx = context.WithValue(ctx, userCtx, user)
-        next.ServeHTTP(w, r.WithContext(ctx))
-    })
+		user, err := app.getUser(ctx, userID)
+		if err != nil {
+			app.unauthorizedErrorResponse(w, r, err)
+			return
+		}
+
+		ctx = context.WithValue(ctx, userCtx, user)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 func (app *application) BasicAuthMiddleware() func(http.Handler) http.Handler {

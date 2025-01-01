@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/gorilla/sessions"
 	"github.com/redis/go-redis/v9"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/auth"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/db"
@@ -168,8 +169,18 @@ func main() {
 
 	// Store
 	cacheStorage := cache.NewRedisStore(rdb)
+
 	store := store.NewStorage(db)
 
+	sessionStore := sessions.NewCookieStore([]byte(cfg.auth.token.secret))
+	sessionStore.MaxAge(86400 * 30)
+
+	sessionStore.Options.Path = "/"
+	sessionStore.Options.HttpOnly = true // HttpOnly should always be enabled
+	// sessionStore.Options.Secure = cfg.env == "production"
+	sessionStore.Options.Secure = true
+
+	// Application
 	app := &application{
 		config:            cfg,
 		store:             store,
@@ -179,6 +190,7 @@ func main() {
 		authenticator:     jwtAuthenticator,
 		rateLimiter:       rateLimiter,
 		googleOauthConfig: googleOauthConfig,
+		session:           sessionStore,
 	}
 
 	// matrucs collected

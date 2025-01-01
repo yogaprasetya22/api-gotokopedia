@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/gorilla/sessions"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"github.com/yogaprasetya22/api-gotokopedia/docs"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/auth"
@@ -34,6 +35,7 @@ type application struct {
 	authenticator     auth.Authenticator
 	rateLimiter       ratelimiter.Limiter
 	googleOauthConfig *oauth2.Config
+	session           sessions.Store
 }
 
 type config struct {

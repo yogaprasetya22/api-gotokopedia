@@ -17,6 +17,7 @@ func (app *application) googleLoginHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (app *application) googleCallbackHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := app.session.Get(r, "auth_token")
 	state := r.FormValue("state")
 	if state != "state-token" {
 		http.Error(w, "Invalid state", http.StatusBadRequest)
@@ -99,15 +100,12 @@ func (app *application) googleCallbackHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// set token in cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "auth_token",
-		Value:    jwtToken,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   app.config.env == "production",
-		SameSite: http.SameSiteLaxMode,
-	})
+	// Set token in cookie
+	session.Values["auth_token"] = jwtToken
+	if err := session.Save(r, w); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
 
 	// Redirect to home
 	http.Redirect(w, r, app.config.frontendURL, http.StatusSeeOther)

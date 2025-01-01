@@ -136,7 +136,7 @@ type CreateUserTokenPayload struct {
 //	@Failure		500		{object}	error
 //	@Router			/authentication/token [get]
 func (app *application) createTokenHandler(w http.ResponseWriter, r *http.Request) {
-	// Ambil parameter dari URL
+	session, _ := app.session.Get(r, "auth_token")
 	email := r.URL.Query().Get("email")
 	password := r.URL.Query().Get("password")
 
@@ -190,13 +190,11 @@ func (app *application) createTokenHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	// set token in cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "auth_token",
-		Value:    token,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   app.config.env == "production",
-	})
+	session.Values["auth_token"] = token
+	if err := session.Save(r, w); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
 
 	if err := app.jsonResponse(w, http.StatusCreated, map[string]string{"message": "token created and set in cookie"}); err != nil {
 		app.internalServerError(w, r, err)
