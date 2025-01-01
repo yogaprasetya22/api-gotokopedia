@@ -105,7 +105,7 @@ func (app *application) googleCallbackHandler(w http.ResponseWriter, r *http.Req
 		Value:    jwtToken,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   app.config.env == "production",
 	})
 
 	// Redirect to home
