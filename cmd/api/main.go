@@ -16,6 +16,8 @@ import (
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store/cache"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 const version = "0.0.1"
@@ -43,6 +45,12 @@ func main() {
 		addr:        env.GetString("ADDR", ":8080"),
 		apiURL:      env.GetString("EXTERNAL_URL", "localhost:8080"),
 		frontendURL: env.GetString("frontendURL", "http://localhost:3000"),
+		google: googleConfig{
+			clientID:     env.GetString("GOOGLE_CLIENT_ID", ""),
+			clientSecret: env.GetString("GOOGLE_CLIENT_SECRET", ""),
+			redirectURL:  env.GetString("GOOGLE_REDIRECT_URL", "http://localhost:8080/auth/google/callback"),
+			scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
+		},
 		db: dbConfig{
 			addr:         env.GetString("DB_ADDR", "postgresql://jagres:Jagres112.@localhost:5432/gotokopedia?sslmode=disable"),
 			maxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 30),
@@ -149,18 +157,28 @@ func main() {
 	// JWT Authenticator
 	jwtAuthenticator := auth.NewJWTAuthenticator(cfg.auth.token.secret, cfg.auth.token.iss, cfg.auth.token.iss)
 
+	// google oauth2
+	var googleOauthConfig = &oauth2.Config{
+		RedirectURL:  cfg.google.redirectURL,
+		ClientID:     cfg.google.clientID,
+		ClientSecret: cfg.google.clientSecret,
+		Scopes:       cfg.google.scopes,
+		Endpoint:     google.Endpoint,
+	}
+
 	// Store
 	cacheStorage := cache.NewRedisStore(rdb)
 	store := store.NewStorage(db)
 
 	app := &application{
-		config:        cfg,
-		store:         store,
-		cacheStorage:  cacheStorage,
-		logger:        logger,
-		mailer:        mailer,
-		authenticator: jwtAuthenticator,
-		rateLimiter:   rateLimiter,
+		config:            cfg,
+		store:             store,
+		cacheStorage:      cacheStorage,
+		logger:            logger,
+		mailer:            mailer,
+		authenticator:     jwtAuthenticator,
+		rateLimiter:       rateLimiter,
+		googleOauthConfig: googleOauthConfig,
 	}
 
 	// matrucs collected

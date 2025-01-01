@@ -9,18 +9,10 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
 func (app *application) googleLoginHandler(w http.ResponseWriter, r *http.Request) {
-	var googleOauthConfig = &oauth2.Config{
-		RedirectURL:  app.config.apiURL + "/auth/google/callback",
-		ClientID:     "775956479285-bnstik8a664i0vgu3jp91iflk5i51n8q.apps.googleusercontent.com",
-		ClientSecret: "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",
-		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
-		Endpoint:     google.Endpoint,
-	}
-	url := googleOauthConfig.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+	url := app.googleOauthConfig.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
@@ -31,22 +23,14 @@ func (app *application) googleCallbackHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	var googleOauthConfig = &oauth2.Config{
-		RedirectURL:  app.config.apiURL + "/auth/google/callback",
-		ClientID:     "775956479285-bnstik8a664i0vgu3jp91iflk5i51n8q.apps.googleusercontent.com",
-		ClientSecret: "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",
-		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
-		Endpoint:     google.Endpoint,
-	}
-
 	code := r.FormValue("code")
-	token, err := googleOauthConfig.Exchange(context.Background(), code)
+	token, err := app.googleOauthConfig.Exchange(context.Background(), code)
 	if err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
 
-	client := googleOauthConfig.Client(context.Background(), token)
+	client := app.googleOauthConfig.Client(context.Background(), token)
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v3/userinfo")
 	if err != nil {
 		app.internalServerError(w, r, err)

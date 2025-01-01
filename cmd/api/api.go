@@ -22,16 +22,18 @@ import (
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store/cache"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 )
 
 type application struct {
-	config        config
-	store         store.Storage
-	cacheStorage  cache.Storage
-	logger        *zap.SugaredLogger
-	mailer        mailer.Client
-	authenticator auth.Authenticator
-	rateLimiter   ratelimiter.Limiter
+	config            config
+	store             store.Storage
+	cacheStorage      cache.Storage
+	logger            *zap.SugaredLogger
+	mailer            mailer.Client
+	authenticator     auth.Authenticator
+	rateLimiter       ratelimiter.Limiter
+	googleOauthConfig *oauth2.Config
 }
 
 type config struct {
@@ -44,6 +46,14 @@ type config struct {
 	auth        authConfig
 	redisCfg    redisConfig
 	rateLimiter ratelimiter.Config
+	google      googleConfig
+}
+
+type googleConfig struct {
+	clientID     string
+	clientSecret string
+	redirectURL  string
+	scopes       []string
 }
 
 type redisConfig struct {

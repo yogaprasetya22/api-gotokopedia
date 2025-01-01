@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -38,7 +39,7 @@ func (app *application) unauthorizedErrorResponse(w http.ResponseWriter, r *http
 	// log.Printf("\033[33m[ERROR_UNAUTHORIZED]: \033[35m\033[1m%s\033[33m:\033[34m%s\033[33m errors: \033[90m%s\033[0m", r.Method, r.URL.Path, err)
 	app.logger.Warnf("unauthorized response", "method", r.Method, "path", r.URL.Path, "error", err.Error())
 
-	writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+	writeJSONError(w, http.StatusUnauthorized, fmt.Sprintf("unauthorized: %s", err))
 }
 func (app *application) unauthorizedActiveErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	// log.Printf("\033[33m[ERROR_UNAUTHORIZED]: \033[35m\033[1m%s\033[33m:\033[34m%s\033[33m errors: \033[90m%s\033[0m", r.Method, r.URL.Path, err)
