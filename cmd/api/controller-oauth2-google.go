@@ -106,6 +106,7 @@ func (app *application) googleCallbackHandler(w http.ResponseWriter, r *http.Req
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   app.config.env == "production",
+		SameSite: http.SameSiteLaxMode,
 	})
 
 	// Redirect to home

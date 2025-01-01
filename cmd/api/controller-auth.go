@@ -195,7 +195,7 @@ func (app *application) createTokenHandler(w http.ResponseWriter, r *http.Reques
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		 Secure:   app.config.env == "production",
+		Secure:   app.config.env == "production",
 	})
 
 	if err := app.jsonResponse(w, http.StatusCreated, map[string]string{"message": "token created and set in cookie"}); err != nil {
@@ -219,7 +219,8 @@ func (app *application) logoutHandler(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   app.config.env == "production",
+		SameSite: http.SameSiteLaxMode,
 	})
 
 	if err := app.jsonResponse(w, http.StatusCreated, map[string]string{"message": "token created and set in cookie"}); err != nil {
