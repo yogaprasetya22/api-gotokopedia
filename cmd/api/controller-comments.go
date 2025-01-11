@@ -16,6 +16,7 @@ const CommentCtx commentKey = "comment"
 
 type CreateCommentsPayload struct {
 	Content string `json:"content" validate:"required,max=255"`
+	Rating  int    `json:"rating" validate:"required,min=1,max=5"`
 }
 
 // GetComments godoc
@@ -75,7 +76,7 @@ func (app *application) getCommentsHandler(w http.ResponseWriter, r *http.Reques
 //	@Accept			json
 //	@Produce		json
 //	@Param			productID	path		int						true	"Product ID"
-//	@Param			payload		body		CreateCommentsPayload	true	"Comment creation payload"
+//	@Param			payload		body		CreateCommentsPayload	true	"Comment payload"
 //	@Success		201			{object}	store.Comment
 //	@Failure		400			{object}	error
 //	@Failure		401			{object}	error
@@ -108,6 +109,7 @@ func (app *application) createCommentHandler(w http.ResponseWriter, r *http.Requ
 		Content:   payload.Content,
 		UserID:    user.ID,
 		ProductID: productID,
+		Rating:    payload.Rating,
 	}
 
 	if err := app.store.Comments.Create(r.Context(), c); err != nil {
@@ -122,6 +124,7 @@ func (app *application) createCommentHandler(w http.ResponseWriter, r *http.Requ
 
 type UpdateCommentsPayload struct {
 	Content *string `json:"content" validate:"omitempty,max=255"`
+	Rating  *int    `json:"rating" validate:"omitempty,min=1,max=5"`
 }
 
 // UpdateComment godoc

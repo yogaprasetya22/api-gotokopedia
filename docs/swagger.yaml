@@ -18,8 +18,13 @@ definitions:
       content:
         maxLength: 255
         type: string
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
     required:
     - content
+    - rating
     type: object
   main.CreateProductPayload:
     properties:
@@ -122,6 +127,10 @@ definitions:
       content:
         maxLength: 255
         type: string
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
     type: object
   main.UpdateProductPayload:
     properties:
@@ -180,7 +189,7 @@ definitions:
       product_id:
         type: integer
       rating:
-        type: number
+        type: integer
       updated_at:
         type: string
       user:
@@ -743,7 +752,7 @@ paths:
         name: productID
         required: true
         type: integer
-      - description: Comment creation payload
+      - description: Comment payload
         in: body
         name: payload
         required: true

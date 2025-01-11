@@ -157,6 +157,7 @@ func (app *application) mount() *chi.Mux {
 			r.Post("/", app.createProductHandler)
 
 			r.Route("/{productID}", func(r chi.Router) {
+				r.Use(app.AuthTokenMiddleware)
 				r.Use(app.productContextMiddleware)
 
 				r.Patch("/", app.checkProductOwnership(app.updateProductHandler))

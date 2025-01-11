@@ -9,7 +9,7 @@ import (
 
 type Comment struct {
 	ID        int64   `json:"id"`
-	Rating    float64 `json:"rating"`
+	Rating    int `json:"rating"`
 	Content   string  `json:"content"`
 	UserID    int64   `json:"user_id"`
 	ProductID int64   `json:"product_id"`

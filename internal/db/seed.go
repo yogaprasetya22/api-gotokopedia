@@ -329,7 +329,7 @@ func generateComments(num int, users []*store.User, products []*store.Product) [
 			ProductID: products[rand.Intn(len(products))].ID,
 			UserID:    users[rand.Intn(len(users))].ID,
 			Content:   comments[rand.Intn(len(comments))],
-			Rating:    rating,
+			Rating:    int(rating),
 		}
 	}
 	return cms

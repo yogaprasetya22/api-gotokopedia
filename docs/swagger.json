@@ -693,7 +693,7 @@
                         "required": true
                     },
                     {
-                        "description": "Comment creation payload",
+                        "description": "Comment payload",
                         "name": "payload",
                         "in": "body",
                         "required": true,
@@ -1203,12 +1203,18 @@
         "main.CreateCommentsPayload": {
             "type": "object",
             "required": [
-                "content"
+                "content",
+                "rating"
             ],
             "properties": {
                 "content": {
                     "type": "string",
                     "maxLength": 255
+                },
+                "rating": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1
                 }
             }
         },
@@ -1351,6 +1357,11 @@
                 "content": {
                     "type": "string",
                     "maxLength": 255
+                },
+                "rating": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1
                 }
             }
         },
@@ -1439,7 +1450,7 @@
                     "type": "integer"
                 },
                 "rating": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"

@@ -701,7 +701,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Comment creation payload",
+                        "description": "Comment payload",
                         "name": "payload",
                         "in": "body",
                         "required": true,
@@ -1211,12 +1211,18 @@ const docTemplate = `{
         "main.CreateCommentsPayload": {
             "type": "object",
             "required": [
-                "content"
+                "content",
+                "rating"
             ],
             "properties": {
                 "content": {
                     "type": "string",
                     "maxLength": 255
+                },
+                "rating": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1
                 }
             }
         },
@@ -1359,6 +1365,11 @@ const docTemplate = `{
                 "content": {
                     "type": "string",
                     "maxLength": 255
+                },
+                "rating": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1
                 }
             }
         },
@@ -1447,7 +1458,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "rating": {
-                    "type": "number"
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
