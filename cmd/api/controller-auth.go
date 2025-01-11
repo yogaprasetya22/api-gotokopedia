@@ -212,14 +212,12 @@ func (app *application) createTokenHandler(w http.ResponseWriter, r *http.Reques
 //	@Router			/authentication/logout [get]
 func (app *application) logoutHandler(w http.ResponseWriter, r *http.Request) {
 	// set token in cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "auth_token",
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   app.config.env == "production",
-		SameSite: http.SameSiteLaxMode,
-	})
+	session, _ := app.session.Get(r, "auth_token")
+	session.Values["auth_token"] = ""
+	if err := session.Save(r, w); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
 
 	if err := app.jsonResponse(w, http.StatusCreated, map[string]string{"message": "token created and set in cookie"}); err != nil {
 		app.internalServerError(w, r, err)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"expvar"
+	"net/http"
 	"os"
 	"runtime"
 	"time"
@@ -177,8 +178,8 @@ func main() {
 
 	sessionStore.Options.Path = "/"
 	sessionStore.Options.HttpOnly = true // HttpOnly should always be enabled
-	// sessionStore.Options.Secure = cfg.env == "production"
 	sessionStore.Options.Secure = true
+	sessionStore.Options.SameSite = http.SameSiteNoneMode
 
 	// Application
 	app := &application{
