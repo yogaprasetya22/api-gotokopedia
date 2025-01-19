@@ -22,7 +22,7 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-const version = "0.0.1"
+const version = ""
 
 //	@title			Tokopedia API
 //	@description	API ini menggunakan mekanisme rate limiter untuk membatasi jumlah permintaan yang dapat dilakukan oleh setiap klien dalam jangka waktu tertentu.
