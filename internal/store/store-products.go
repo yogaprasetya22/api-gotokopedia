@@ -332,8 +332,11 @@ func (s *ProductStore) commentsForProductsDetail(ctx context.Context, tx *sql.Tx
 		// Populate Ulasan
 		ratingBreakdown := ratingBreakdownMap[p.ID]
 		totalRating := 0
-		for rating, count := range ratingBreakdown {
-			totalRating += rating * count
+		for rating := 1; rating <= 5; rating++ { // Ensure all ratings from 1 to 5 are present
+			if _, exists := ratingBreakdown[rating]; !exists {
+				ratingBreakdown[rating] = 0
+			}
+			totalRating += rating * ratingBreakdown[rating]
 		}
 
 		p.Ulasan = Ulasan{
