@@ -475,6 +475,12 @@ const docTemplate = `{
                         "description": "sort",
                         "name": "sort",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "rating",
+                        "name": "rating",
+                        "in": "query"
                     }
                 ],
                 "responses": {

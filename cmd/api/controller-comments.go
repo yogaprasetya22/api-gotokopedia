@@ -30,6 +30,7 @@ type CreateCommentsPayload struct {
 //	@Param			limit	query		int		false	"limit"
 //	@Param			offset	query		int		false	"offset"
 //	@Param			sort	query		string	false	"sort"
+//	@Param			rating	query		int		false	"rating"
 //	@Success		200		{array}		store.Comment
 //	@Failure		404		{object}	error
 //	@Failure		500		{object}	error
@@ -41,6 +42,7 @@ func (app *application) getCommentsHandler(w http.ResponseWriter, r *http.Reques
 		Limit:  5,
 		Offset: 0,
 		Sort:   "desc",
+		Rating: 0,
 	}
 
 	fq, err := fq.Parse(r)

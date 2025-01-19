@@ -7,13 +7,14 @@ import (
 )
 
 type PaginatedFeedQuery struct {
-	Limit      int    `json:"limit" validate:"gte=1,lte=24"`
-	Offset     int    `json:"offset" validate:"gte=0"`
-	Category   string `json:"category" validate:"max=100"`
-	Sort       string `json:"sort" validate:"oneof=asc desc"`
-	Search     string `json:"search" validate:"max=100"`
-	Since      string `json:"since"`
-	Until      string `json:"until"`
+	Limit    int    `json:"limit" validate:"gte=1,lte=24"`
+	Offset   int    `json:"offset" validate:"gte=0"`
+	Category string `json:"category" validate:"max=100"`
+	Rating   int    `json:"rating" validate:"omitempty,oneof=1 2 3 4 5"`
+	Sort     string `json:"sort" validate:"oneof=asc desc"`
+	Search   string `json:"search" validate:"max=100"`
+	Since    string `json:"since"`
+	Until    string `json:"until"`
 }
 
 func (fq PaginatedFeedQuery) Parse(r *http.Request) (PaginatedFeedQuery, error) {
@@ -42,6 +43,16 @@ func (fq PaginatedFeedQuery) Parse(r *http.Request) (PaginatedFeedQuery, error) 
 	category := qs.Get("category")
 	if category != "" {
 		fq.Category = category
+	}
+
+	rating := qs.Get("rating")
+	if rating != "" {
+		r, err := strconv.Atoi(rating)
+		if err != nil {
+			return fq, nil
+		}
+
+		fq.Rating = r
 	}
 
 	sort := qs.Get("sort")

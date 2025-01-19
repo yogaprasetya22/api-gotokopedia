@@ -608,6 +608,10 @@ paths:
         in: query
         name: sort
         type: string
+      - description: rating
+        in: query
+        name: rating
+        type: integer
       produces:
       - application/json
       responses:

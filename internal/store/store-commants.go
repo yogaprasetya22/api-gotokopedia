@@ -168,14 +168,14 @@ func (s *CommentStore) GetComments(ctx context.Context, slugProduct string, fq P
 }
 
 func (s *CommentStore) GetCommentBySlugProduct(ctx context.Context, tx *sql.Tx, slugProduct string, fq PaginatedFeedQuery) ([]Comment, error) {
-	query := `SELECT comments.id, comments.content, comments.rating, comments.user_id, comments.product_id, comments.created_at, comments.updated_at, users.username, users.email, users.picture, users.id FROM comments JOIN users on users.id = comments.user_id where comments.product_id = (select id from products where slug = $1) order by comments.id desc LIMIT $2 OFFSET $3`
+	query := `SELECT comments.id, comments.content, comments.rating, comments.user_id, comments.product_id, comments.created_at, comments.updated_at, users.username, users.email, users.picture, users.id FROM comments JOIN users on users.id = comments.user_id where comments.product_id = (select id from products where slug = $1) AND ($4 = 0 OR comments.rating = $4) order by comments.id desc LIMIT $2 OFFSET $3`
 
 	skip := fq.Offset * (fq.Limit)
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	rows, err := tx.QueryContext(ctx, query, slugProduct, fq.Limit, skip)
+	rows, err := tx.QueryContext(ctx, query, slugProduct, fq.Limit, skip, fq.Rating)
 	if err != nil {
 		return nil, err
 	}
