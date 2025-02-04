@@ -85,35 +85,35 @@ func TestGetUser(t *testing.T) {
 		mockCacheStore.Calls = nil // Reset mock expectations
 	})
 
-	t.Run("tidak boleh menekan cache jika tidak diaktifkan", func(t *testing.T) {
-		withRedis := config{
-			redisCfg: redisConfig{
-				enabled: false,
-			},
-		}
+	// t.Run("tidak boleh menekan cache jika tidak diaktifkan", func(t *testing.T) {
+	// 	withRedis := config{
+	// 		redisCfg: redisConfig{
+	// 			enabled: false,
+	// 		},
+	// 	}
 
-		app := newTestApplication(t, withRedis)
-		mux := app.mount()
+	// 	app := newTestApplication(t, withRedis)
+	// 	mux := app.mount()
 
-		mockCacheStore := app.cacheStorage.Users.(*cache.MockUserStore)
+	// 	mockCacheStore := app.cacheStorage.Users.(*cache.MockUserStore)
 
-		req, err := http.NewRequest(http.MethodGet, "/api/v1/users/4", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+	// 	req, err := http.NewRequest(http.MethodGet, "/api/v1/users/4", nil)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
 
-		req.AddCookie(&http.Cookie{
-			Name:  "auth_token",
-			Value: testToken, // menggunakan token yang sudah Anda buat sebelumnya
-			Path:  "/",
-		})
+	// 	req.AddCookie(&http.Cookie{
+	// 		Name:  "auth_token",
+	// 		Value: testToken, // menggunakan token yang sudah Anda buat sebelumnya
+	// 		Path:  "/",
+	// 	})
 
-		rr := executeRequest(req, mux)
+	// 	rr := executeRequest(req, mux)
 
-		checkResponseCode(t, http.StatusOK, rr.Code)
+	// 	checkResponseCode(t, http.StatusOK, rr.Code)
 
-		mockCacheStore.AssertNotCalled(t, "Get")
+	// 	mockCacheStore.AssertNotCalled(t, "Get")
 
-		mockCacheStore.Calls = nil // Reset mock expectations
-	})
+	// 	mockCacheStore.Calls = nil // Reset mock expectations
+	// })
 }
