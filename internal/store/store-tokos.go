@@ -3,17 +3,18 @@ package store
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 type Toko struct {
-	ID           int64  `json:"id,omitempty"`
-	UserID       int64  `json:"user_id,omitempty"`
-	Slug         string `json:"slug"`
-	Name         string `json:"name"`
-	ImageProfile string `json:"image_profile"`
-	Country      string `json:"country"`
-	CreatedAt    string `json:"created_at"`
-	User         User   `json:"user"`
+	ID           int64       `json:"id,omitempty"`
+	UserID       int64       `json:"user_id,omitempty"`
+	Slug         string      `json:"slug"`
+	Name         string      `json:"name"`
+	ImageProfile string      `json:"image_profile"`
+	Country      string      `json:"country"`
+	CreatedAt    time.Time   `json:"created_at"`
+	User         *SingleUser `json:"user"`
 }
 
 type TokoStore struct {
@@ -73,7 +74,7 @@ func (s *TokoStore) GetByID(ctx context.Context, id int64) (*Toko, error) {
 	defer cancel()
 
 	t := &Toko{}
-	user := &User{}
+	user := &SingleUser{}
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&t.ID, &t.UserID, &t.Slug, &t.Name, &t.ImageProfile, &t.Country, &t.CreatedAt,
 		&user.ID, &user.Username, &user.Email, &user.CreatedAt)
@@ -86,7 +87,7 @@ func (s *TokoStore) GetByID(ctx context.Context, id int64) (*Toko, error) {
 		}
 	}
 
-	t.User = *user
+	t.User = user
 	return t, nil
 }
 
@@ -101,7 +102,7 @@ func (s *TokoStore) GetBySlug(ctx context.Context, slug string) (*Toko, error) {
 	defer cancel()
 
 	t := &Toko{}
-	user := &User{}
+	user := &SingleUser{}
 	err := s.db.QueryRowContext(ctx, query, slug).Scan(
 		&t.ID, &t.UserID, &t.Slug, &t.Name, &t.ImageProfile, &t.Country, &t.CreatedAt,
 		&user.ID, &user.Username, &user.Email, &user.Picture, &user.CreatedAt)
@@ -114,6 +115,6 @@ func (s *TokoStore) GetBySlug(ctx context.Context, slug string) (*Toko, error) {
 		}
 	}
 
-	t.User = *user
+	t.User = user
 	return t, nil
 }

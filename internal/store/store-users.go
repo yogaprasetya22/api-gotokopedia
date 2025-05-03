@@ -17,17 +17,29 @@ var (
 )
 
 type User struct {
-	ID        int64    `json:"id"`
-	GoogleID  string   `json:"google_id,omitempty"`
-	Picture   string   `json:"picture"`
-	Username  string   `json:"username"`
-	Email     string   `json:"email"`
-	Password  password `json:"-"`
-	CreatedAt string   `json:"created_at"`
-	IsActive  bool     `json:"is_active"`
-	RoleID    int64    `json:"role_id,omitempty"`
-	Role      Role     `json:"role,omitempty"`
+	ID        int64     `json:"id"`
+	GoogleID  string    `json:"google_id,omitempty"`
+	Picture   string    `json:"picture"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	Password  password  `json:"-"`
+	CreatedAt time.Time `json:"created_at"`
+	IsActive  bool      `json:"is_active"`
+	RoleID    int64     `json:"role_id,omitempty"`
+	Role      Role      `json:"role,omitempty"`
 }
+
+type SingleUser struct {
+	ID        int64     `json:"id"`
+	GoogleID  string    `json:"google_id,omitempty"`
+	Picture   string    `json:"picture"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	Password  password  `json:"-"`
+	CreatedAt time.Time `json:"created_at"`
+	IsActive  bool      `json:"is_active"`
+}
+
 type password struct {
 	text *string
 	hash []byte
@@ -53,7 +65,48 @@ type UserStore struct {
 	db *sql.DB
 }
 
-func (s *UserStore) Create(ctx context.Context, tx *sql.Tx, user *User) error {
+func (s *UserStore) CreateWithActive(ctx context.Context, tx *sql.Tx, user *User) (*User, error) {
+	query := `
+		INSERT INTO users (username, password, email, is_active, role_id) VALUES 
+	($1, $2, $3, $4, (SELECT id FROM roles WHERE name = $5))
+	RETURNING id, created_at
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	role := user.Role.Name
+	if role == "" {
+		role = "user"
+	}
+
+	err := tx.QueryRowContext(
+		ctx,
+		query,
+		user.Username,
+		user.Password.hash,
+		user.Email,
+		true, // Set is_active to true
+		role,
+	).Scan(
+		&user.ID,
+		&user.CreatedAt,
+	)
+	if err != nil {
+		switch {
+		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
+			return user, ErrDuplicateEmail
+		case err.Error() == `pq: duplicate key value violates unique constraint "users_username_key"`:
+			return user, ErrDuplicateUsername
+		default:
+			return user, err
+		}
+	}
+
+	return user, nil
+}
+
+func (s *UserStore) Create(ctx context.Context, tx *sql.Tx, user *User) (*User, error) {
 	query := `
 		INSERT INTO users (username, password, email, role_id) VALUES 
     ($1, $2, $3, (SELECT id FROM roles WHERE name = $4))
@@ -82,15 +135,15 @@ func (s *UserStore) Create(ctx context.Context, tx *sql.Tx, user *User) error {
 	if err != nil {
 		switch {
 		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
-			return ErrDuplicateEmail
+			return user, ErrDuplicateEmail
 		case err.Error() == `pq: duplicate key value violates unique constraint "users_username_key"`:
-			return ErrDuplicateUsername
+			return user, ErrDuplicateUsername
 		default:
-			return err
+			return user, err
 		}
 	}
 
-	return nil
+	return user, nil
 }
 
 func (s *UserStore) CreateByOAuth(ctx context.Context, user *User) error {
@@ -237,7 +290,7 @@ func (s *UserStore) GetByEmail(ctx context.Context, email string) (*User, error)
 func (s *UserStore) CreateAndInvite(ctx context.Context, user *User, token string, invitationExp time.Duration) error {
 	return withTx(s.db, ctx, func(tx *sql.Tx) error {
 		// create user
-		if err := s.Create(ctx, tx, user); err != nil {
+		if _, err := s.CreateWithActive(ctx, tx, user); err != nil {
 			return err
 		}
 		// create user invite

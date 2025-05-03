@@ -1,5 +1,16 @@
 basePath: /api/v1
 definitions:
+  main.AddToCartPayload:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - product_id
+    - quantity
+    type: object
   main.CreateCategoryRequest:
     properties:
       description:
@@ -167,6 +178,69 @@ definitions:
       version:
         type: integer
     type: object
+  store.Cart:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/store.CartItem'
+        type: array
+      stores:
+        description: Relasi
+        items:
+          $ref: '#/definitions/store.CartStores'
+        type: array
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  store.CartItem:
+    properties:
+      cart_id:
+        type: integer
+      cart_store:
+        $ref: '#/definitions/store.CartStores'
+      cart_store_id:
+        description: Nullable di database
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      product:
+        allOf:
+        - $ref: '#/definitions/store.Product'
+        description: Relasi
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  store.CartStores:
+    properties:
+      cart_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/store.CartItem'
+        type: array
+      toko:
+        allOf:
+        - $ref: '#/definitions/store.Toko'
+        description: Relasi
+      toko_id:
+        type: integer
+    type: object
   store.Category:
     properties:
       description:
@@ -253,6 +327,23 @@ definitions:
       name:
         type: string
     type: object
+  store.SingleUser:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      google_id:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      picture:
+        type: string
+      username:
+        type: string
+    type: object
   store.Toko:
     properties:
       country:
@@ -268,7 +359,7 @@ definitions:
       slug:
         type: string
       user:
-        $ref: '#/definitions/store.User'
+        $ref: '#/definitions/store.SingleUser'
       user_id:
         type: integer
     type: object
@@ -382,6 +473,158 @@ paths:
       summary: Registers a user
       tags:
       - authentication
+  /cart:
+    get:
+      consumes:
+      - application/json
+      description: fetch a cart
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Cart'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: fetch a cart
+      tags:
+      - cart
+    post:
+      consumes:
+      - application/json
+      description: create a cart
+      parameters:
+      - description: payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.AddToCartPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.Cart'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: create a cart
+      tags:
+      - cart
+  /cart/item/{cartStoreItemID}:
+    get:
+      consumes:
+      - application/json
+      description: fetch a cart store item by ID
+      parameters:
+      - description: cart store item ID
+        in: path
+        name: cartStoreItemID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Cart'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: fetch a cart store item
+      tags:
+      - cart
+  /cart/item/{cartStoreItemID}/decrease:
+    patch:
+      consumes:
+      - application/json
+      description: remove quantity to cart store item
+      parameters:
+      - description: cart store item ID
+        in: path
+        name: cartStoreItemID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.Cart'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: remove quantity to cart store item
+      tags:
+      - cart
+  /cart/item/{cartStoreItemID}/increase:
+    patch:
+      consumes:
+      - application/json
+      description: add quantity to cart store item
+      parameters:
+      - description: cart store item ID
+        in: path
+        name: cartStoreItemID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.Cart'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: add quantity to cart store item
+      tags:
+      - cart
   /catalogue:
     get:
       consumes:
@@ -482,8 +725,6 @@ paths:
         "500":
           description: Internal Server Error
           schema: {}
-      security:
-      - ApiKeyAuth: []
       summary: fetch a catalogue
       tags:
       - catalogue

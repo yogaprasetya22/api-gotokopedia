@@ -87,30 +87,30 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		Token: plainToken,
 	}
 
-	// prepare the email template
-	activationURL := fmt.Sprintf("%s/confirm/%s", app.config.frontendURL, plainToken)
-	isProdEnv := app.config.env == "production"
-	vars := struct {
-		Username      string
-		ActivationURL string
-	}{
-		Username:      user.Username,
-		ActivationURL: activationURL,
-	}
+	// // prepare the email template
+	// activationURL := fmt.Sprintf("%s/confirm/%s", app.config.frontendURL, plainToken)
+	// isProdEnv := app.config.env == "production"
+	// vars := struct {
+	// 	Username      string
+	// 	ActivationURL string
+	// }{
+	// 	Username:      user.Username,
+	// 	ActivationURL: activationURL,
+	// }
 
-	// mail the user
-	err = app.mailer.Send("user_invitation.html", user.Username, user.Email, vars, !isProdEnv)
-	if err != nil {
-		app.logger.Errorw("Error sending email", "error", err)
+	// // mail the user
+	// err = app.mailer.Send("user_invitation.html", user.Username, user.Email, vars, !isProdEnv)
+	// if err != nil {
+	// 	app.logger.Errorw("Error sending email", "error", err)
 
-		// rollback the user creation
-		if err := app.store.Users.Delete(ctx, user.ID); err != nil {
-			app.logger.Errorw("Error rolling back user creation", "error", err)
-		}
+	// 	// rollback the user creation
+	// 	if err := app.store.Users.Delete(ctx, user.ID); err != nil {
+	// 		app.logger.Errorw("Error rolling back user creation", "error", err)
+	// 	}
 
-		app.internalServerError(w, r, err)
-		return
-	}
+	// 	app.internalServerError(w, r, err)
+	// 	return
+	// }
 
 	if err := app.jsonResponse(w, http.StatusCreated, userWithToken); err != nil {
 		app.internalServerError(w, r, err)

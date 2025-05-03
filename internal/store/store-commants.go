@@ -5,17 +5,18 @@ import (
 	"database/sql"
 	"errors"
 	"math"
+	"time"
 )
 
 type Comment struct {
-	ID        int64   `json:"id"`
-	Rating    int `json:"rating"`
-	Content   string  `json:"content"`
-	UserID    int64   `json:"user_id"`
-	ProductID int64   `json:"product_id"`
-	CreatedAt string  `json:"created_at"`
-	UpdateAt  string  `json:"updated_at"`
-	User      User    `json:"user"`
+	ID        int64     `json:"id"`
+	Rating    int       `json:"rating"`
+	Content   string    `json:"content"`
+	UserID    int64     `json:"user_id"`
+	ProductID int64     `json:"product_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdateAt  string    `json:"updated_at"`
+	User      User      `json:"user"`
 }
 
 type MetaCommentPaginated struct {
@@ -59,13 +60,21 @@ func (s *CommentStore) GetByProductID(ctx context.Context, productID int64) ([]C
 }
 
 func (s *CommentStore) GetByID(ctx context.Context, id int64) (*Comment, error) {
-	query := `SELECT id, content, user_id, product_id, created_at, updated_at FROM comments WHERE id = $1`
+	query := `SELECT id, content, rating, user_id, product_id, created_at, updated_at FROM comments WHERE id = $1`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
 	comment := &Comment{}
-	err := s.db.QueryRowContext(ctx, query, id).Scan(&comment.ID, &comment.Content, &comment.UserID, &comment.ProductID, &comment.CreatedAt, &comment.UpdateAt)
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
+		&comment.ID,
+		&comment.Content,
+		&comment.Rating,
+		&comment.UserID,
+		&comment.ProductID,
+		&comment.CreatedAt,
+		&comment.UpdateAt,
+	)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):

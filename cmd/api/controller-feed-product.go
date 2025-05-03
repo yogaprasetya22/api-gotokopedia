@@ -20,7 +20,6 @@ import (
 //	@Success		200				{object}	store.Product
 //	@Failure		404				{object}	error
 //	@Failure		500				{object}	error
-//	@Security		ApiKeyAuth
 //	@Router			/catalogue/{slug_toko}/{slug_product} [get]
 func (app *application) getProductHandler(w http.ResponseWriter, r *http.Request) {
 	slugToko := chi.URLParam(r, "slug_toko")

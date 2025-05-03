@@ -75,10 +75,10 @@ func (app *application) createProductHandler(w http.ResponseWriter, r *http.Requ
 		IsForSale:     payload.IsForSale,
 		IsApproved:    payload.IsApproved,
 		ImageUrls:     payload.ImageUrls,
-		Category: store.Category{
+		Category: &store.Category{
 			ID: payload.CategoryID,
 		},
-		Toko: store.Toko{
+		Toko: &store.Toko{
 			ID: payload.TokoID,
 		},
 	}
@@ -252,7 +252,7 @@ func (app *application) productContextMiddleware(next http.Handler) http.Handler
 
 		toko, _ := app.store.Tokos.GetByID(ctx, product.Toko.ID)
 
-		product.Toko = *toko
+		product.Toko = toko
 
 		ctx = context.WithValue(ctx, productCtx, product)
 		next.ServeHTTP(w, r.WithContext(ctx))

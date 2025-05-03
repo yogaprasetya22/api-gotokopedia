@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -42,7 +44,8 @@ type Storage struct {
 		GetByGoogleID(context.Context, string) (*User, error)
 		GetByID(context.Context, int64) (*User, error)
 		GetByEmail(context.Context, string) (*User, error)
-		Create(context.Context, *sql.Tx, *User) error
+		CreateWithActive(ctx context.Context, tx *sql.Tx, user *User) (*User, error)
+		Create(context.Context, *sql.Tx, *User) (*User, error)
 		CreateByOAuth(context.Context, *User) error
 		CreateAndInvite(ctx context.Context, user *User, token string, exp time.Duration) error
 		Activate(context.Context, string) error
@@ -63,16 +66,42 @@ type Storage struct {
 	Roles interface {
 		GetByName(context.Context, string) (*Role, error)
 	}
+	Carts interface {
+		GetCartByUserID(ctx context.Context, userID int64, query PaginatedFeedQuery) (*Cart, error)
+		AddToCartTransaction(ctx context.Context, userID, productID, quantity int64) (*Cart, error)
+		AddingQuantityCartStoreItemTransaction(ctx context.Context, cartStoreItemID uuid.UUID, userID int64) error
+		RemovingQuantityCartStoreItemTransaction(ctx context.Context, cartStoreItemID uuid.UUID, userID int64) error
+		GetDetailCartByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) (*CartDetailResponse, error)
+	}
+	Orders interface {
+		CreateFromCart(ctx context.Context, cartStoreID uuid.UUID, userID, paymentMethodID, shippingMethodID int64, shippingAddress, notes string) error
+		UpdateStatus(ctx context.Context, orderID, statusID int64, notes string) error
+		GetByID(ctx context.Context, id int64) (*Order, error)
+		GetByUserID(ctx context.Context, userID int64, fq PaginatedFeedQuery) ([]*Order, error)
+		GetShippingMethods(ctx context.Context) ([]*ShippingMethod, error)
+		GetPaymentMethods(ctx context.Context) ([]*PaymentMethod, error)
+	}
+
+	ShippingAddresses interface {
+		GetByID(context.Context, uuid.UUID, int64) (*ShippingAddresses, error)
+		Create(context.Context, *ShippingAddresses) error
+		Update(context.Context, *ShippingAddresses) error
+		Delete(context.Context, uuid.UUID, int64) error
+	}
 }
 
 func NewStorage(db *sql.DB) Storage {
 	return Storage{
-		Products:  &ProductStore{db},
-		Categoris: &CategoryStore{db},
-		Tokos:     &TokoStore{db},
-		Users:     &UserStore{db},
-		Follow:    &FollowerStore{db},
-		Comments:  &CommentStore{db},
+		Users:             &UserStore{db},
+		Roles:             &RoleStore{db},
+		Follow:            &FollowerStore{db},
+		Categoris:         &CategoryStore{db},
+		Products:          &ProductStore{db},
+		Tokos:             &TokoStore{db},
+		Comments:          &CommentStore{db},
+		Carts:             &CartStore{db},
+		Orders:            &OrderStore{db},
+		ShippingAddresses: &ShippingAddresStore{db},
 	}
 }
 

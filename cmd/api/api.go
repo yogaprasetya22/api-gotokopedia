@@ -178,6 +178,39 @@ func (app *application) mount() *chi.Mux {
 			})
 		})
 
+		/// carts
+		r.Route("/cart", func(r chi.Router) {
+			r.Use(app.AuthTokenMiddleware)
+
+			r.Post("/", app.createCartHandler)
+			r.Get("/", app.getCartsHandler)
+
+			r.Route("/store/{cartStoreID}", func(r chi.Router) {
+
+				r.Get("/", app.GetDetailCartStoreHandler)
+			})
+
+			r.Route("/item/{cartStoreItemID}", func(r chi.Router) {
+
+				r.Patch("/increase", app.AddingQuantityCartStoreItemHandler)
+				r.Patch("/decrease", app.RemovingQuantityCartStoreItemHandler)
+
+				// r.Patch("/", app.updateCartHandler)
+				// r.Delete("/", app.deleteCartItemHandler) // Delete a specific item in the cart
+			})
+		})
+
+		// order
+		r.Route("/order", func(r chi.Router) {
+			r.Use(app.AuthTokenMiddleware)
+
+			r.Get("/", app.listOrdersHandler)
+			r.Get("/{id}", app.getOrderHandler)
+			r.Post("/", app.createOrderHandler)
+			// r.Patch("/{id}", app.updateOrderHandler)
+			// r.Delete("/{id}", app.deleteOrderHandler)
+		})
+
 		r.Route("/catalogue", func(r chi.Router) {
 			r.Get("/", app.getProductCategoryFeed)
 

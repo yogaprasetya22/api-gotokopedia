@@ -32,12 +32,17 @@ func (fq PaginatedFeedQuery) Parse(r *http.Request) (PaginatedFeedQuery, error) 
 
 	offset := qs.Get("offset")
 	if offset != "" {
-		l, err := strconv.Atoi(offset)
+		o, err := strconv.Atoi(offset)
 		if err != nil {
 			return fq, nil
 		}
 
-		fq.Offset = l
+		// Adjust offset to match SQL index starting from 0
+		if o > 0 {
+			o--
+		}
+
+		fq.Offset = o
 	}
 
 	category := qs.Get("category")

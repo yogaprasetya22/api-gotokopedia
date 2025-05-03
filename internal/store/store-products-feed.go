@@ -27,8 +27,8 @@ type DetailProduct struct {
 	UpdatedAt     time.Time `json:"updated_at" `
 	ImageUrls     []string  `json:"image_urls" `
 	Version       int       `json:"version"`
-	Category      Category  `json:"category" `
-	Toko          Toko      `json:"toko" `
+	Category      *Category `json:"category" `
+	Toko          *Toko     `json:"toko" `
 	Ulasan        Ulasan    `json:"ulasan"` // New field for review stats
 }
 
@@ -86,7 +86,10 @@ func (s *ProductStore) productByTokoSlug(ctx context.Context, tx *sql.Tx, slug_t
 
 	var products []*Product
 	for rows.Next() {
-		p := &Product{}
+		p := &Product{
+			Category: &Category{},
+			Toko:     &Toko{User: &SingleUser{}},
+		}
 		err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Country, &p.Description, &p.Price, &p.DiscountPrice, &p.Discount, &p.Estimation, &p.Stock, &p.Sold, &p.IsForSale, &p.IsApproved, &p.CreatedAt, &p.UpdatedAt, pq.Array(&p.ImageUrls),
 			&p.Category.ID, &p.Category.Name, &p.Category.Slug,
 			&p.Toko.ID, &p.Toko.UserID, &p.Toko.Slug, &p.Toko.Name, &p.Toko.Country, &p.Toko.CreatedAt,
@@ -139,7 +142,12 @@ func (s *ProductStore) productBySlug(ctx context.Context, tx *sql.Tx, slug_toko,
 	JOIN users u ON t.user_id = u.id
 	WHERE t.slug = $1 AND p.slug = $2 AND p.is_approved = true`
 
-	p := &DetailProduct{}
+	p := &DetailProduct{
+		Category: &Category{},
+		Toko:     &Toko{
+			User: &SingleUser{},
+		},
+	}
 	err := tx.QueryRowContext(ctx, query, slug_toko, slug_product).Scan(&p.ID, &p.Name, &p.Slug, &p.Country, &p.Description, &p.Price, &p.DiscountPrice, &p.Discount, &p.Estimation, &p.Stock, &p.Sold, &p.IsForSale, &p.IsApproved, &p.CreatedAt, &p.UpdatedAt, pq.Array(&p.ImageUrls),
 		&p.Category.ID, &p.Category.Name, &p.Category.Slug,
 		&p.Toko.ID, &p.Toko.UserID, &p.Toko.Slug, &p.Toko.Name, &p.Toko.Country, &p.Toko.CreatedAt,
@@ -199,7 +207,12 @@ func (s *ProductStore) productFeed(ctx context.Context, tx *sql.Tx, categoryIDs 
 
 	var products []*Product
 	for rows.Next() {
-		p := &Product{}
+		p := &Product{
+			Category: &Category{},
+			Toko: &Toko{
+				User: &SingleUser{},
+			},
+		}
 		err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Country, &p.Description, &p.Price, &p.DiscountPrice, &p.Discount, &p.Estimation, &p.Stock, &p.Sold, &p.IsForSale, &p.IsApproved, &p.CreatedAt, &p.UpdatedAt, pq.Array(&p.ImageUrls),
 			&p.Category.ID, &p.Category.Name, &p.Category.Slug,
 			&p.Toko.ID, &p.Toko.UserID, &p.Toko.Slug, &p.Toko.Name, &p.Toko.Country, &p.Toko.CreatedAt,
@@ -264,7 +277,12 @@ func (s *ProductStore) productsByCategorySlug(ctx context.Context, tx *sql.Tx, f
 
 	var products []*Product
 	for rows.Next() {
-		p := &Product{}
+		p := &Product{
+			Category: &Category{},
+			Toko: &Toko{
+				User: &SingleUser{},
+			},
+		}
 		err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Country, &p.Description, &p.Price, &p.DiscountPrice, &p.Discount, &p.Estimation, &p.Stock, &p.Sold, &p.IsForSale, &p.IsApproved, &p.CreatedAt, &p.UpdatedAt, pq.Array(&p.ImageUrls),
 			&p.Category.ID, &p.Category.Name, &p.Category.Slug,
 			&p.Toko.ID, &p.Toko.UserID, &p.Toko.Slug, &p.Toko.Name, &p.Toko.Country, &p.Toko.CreatedAt,

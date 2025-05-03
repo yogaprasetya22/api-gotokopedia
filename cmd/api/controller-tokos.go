@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store"
@@ -19,14 +20,14 @@ type CreateTokoRequest struct {
 }
 
 type TokoToProduct struct {
-	UserID       *int64           `json:"user_id"`
-	Slug         *string          `json:"slug"`
-	Name         *string          `json:"name"`
-	ImageProfile *string          `json:"image_profile,omitempty"`
-	Country      *string          `json:"country"`
-	CreatedAt    *string          `json:"created_at"`
-	User         *store.User      `json:"user"`
-	Products     []*store.Product `json:"products"`
+	UserID       int64             `json:"user_id"`
+	Slug         string            `json:"slug"`
+	Name         string            `json:"name"`
+	ImageProfile string            `json:"image_profile,omitempty"`
+	Country      string            `json:"country"`
+	CreatedAt    time.Time            `json:"created_at"`
+	User         *store.SingleUser `json:"user"`
+	Products     []*store.Product  `json:"products"`
 }
 
 // GetProductToko gdoc
@@ -96,13 +97,13 @@ func (app *application) getTokoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokoToProduct := TokoToProduct{
-		UserID:       &t.UserID,
-		Slug:         &t.Slug,
-		Name:         &t.Name,
-		ImageProfile: &t.ImageProfile,
-		Country:      &t.Country,
-		CreatedAt:    &t.CreatedAt,
-		User:         &t.User,
+		UserID:       t.UserID,
+		Slug:         t.Slug,
+		Name:         t.Name,
+		ImageProfile: t.ImageProfile,
+		Country:      t.Country,
+		CreatedAt:    t.CreatedAt,
+		User:         t.User,
 		Products:     products,
 	}
 

@@ -55,7 +55,7 @@ func Seed(store store.Storage, db *sql.DB) {
 
 	tx, _ := db.BeginTx(ctx, nil)
 	for _, user := range users {
-		if err := store.Users.Create(ctx, tx, user); err != nil {
+		if _,err := store.Users.Create(ctx, tx, user); err != nil {
 			log.Println("Error creating user:", err)
 			return
 		}
@@ -225,20 +225,6 @@ func generateProducts(storage store.Storage, tokos []*store.Toko) []*store.Produ
 			return parsed
 		}
 
-		// Konversi rating menjadi float64
-		// parseFloat := func(value string) float64 {
-		// 	if value == "null" || value == "" {
-		// 		return 0
-		// 	}
-		// 	cleaned := strings.ReplaceAll(value, ",", "")
-		// 	parsed, err := strconv.ParseFloat(cleaned, 64)
-		// 	if err != nil {
-		// 		log.Printf("Error parsing float value: %v", err)
-		// 		return 0
-		// 	}
-		// 	return parsed
-		// }
-
 		// Konversi diskon menjadi float64 "10%"
 		parseDiscount := func(value string) float64 {
 			if value == "null" || value == "" {
@@ -311,8 +297,8 @@ func generateProducts(storage store.Storage, tokos []*store.Toko) []*store.Produ
 			IsForSale:  product.Discount != "" && product.Discount != "null",
 			IsApproved: true,
 			ImageUrls:  product.ImageURL,
-			Category:   *category,
-			Toko:       *toko,
+			Category:   category,
+			Toko:       toko,
 		}
 	}
 

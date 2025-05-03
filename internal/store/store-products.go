@@ -27,8 +27,8 @@ type Product struct {
 	UpdatedAt     time.Time `json:"updated_at" `
 	ImageUrls     []string  `json:"image_urls" `
 	Version       int       `json:"version"`
-	Category      Category  `json:"category" `
-	Toko          Toko      `json:"toko" `
+	Category      *Category `json:"category" `
+	Toko          *Toko     `json:"toko" `
 }
 
 type ProductStore struct {
@@ -73,7 +73,10 @@ func (s *ProductStore) GetAllProduct(ctx context.Context, fq PaginatedFeedQuery)
 
 	var products []*Product
 	for rows.Next() {
-		p := &Product{}
+		p := &Product{
+			Category: &Category{},
+			Toko:     &Toko{User: &SingleUser{}},
+		}
 		err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Country, &p.Description, &p.Price, &p.DiscountPrice, &p.Discount, &p.Estimation, &p.Stock, &p.Sold, &p.IsForSale, &p.IsApproved, &p.CreatedAt, &p.UpdatedAt, pq.Array(&p.ImageUrls),
 			&p.Category.ID, &p.Category.Name, &p.Category.Slug,
 			&p.Toko.ID, &p.Toko.UserID, &p.Toko.Slug, &p.Toko.Name, &p.Toko.Country, &p.Toko.CreatedAt,
@@ -97,7 +100,10 @@ func (s *ProductStore) GetByID(ctx context.Context, id int64) (*Product, error) 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	product := &Product{}
+	product := &Product{
+			Category: &Category{},
+			Toko:     &Toko{User: &SingleUser{}},
+		}
 	err := s.db.QueryRowContext(ctx, query, id).Scan(&product.ID, &product.Name, &product.Slug, &product.Country, &product.Description, &product.Price, &product.DiscountPrice, &product.Discount, &product.Estimation, &product.Stock, &product.Sold, &product.IsForSale, &product.IsApproved, &product.CreatedAt, &product.UpdatedAt, pq.Array(&product.ImageUrls), &product.Category.ID, &product.Toko.ID, &product.Version)
 	if err != nil {
 		switch {
@@ -199,7 +205,10 @@ func (s *ProductStore) productByTokoID(ctx context.Context, tx *sql.Tx, id int64
 
 	var products []*Product
 	for rows.Next() {
-		p := &Product{}
+		p := &Product{
+			Category: &Category{},
+			Toko:     &Toko{User: &SingleUser{}},
+		}
 		err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Country, &p.Description, &p.Price, &p.DiscountPrice, &p.Discount, &p.Estimation, &p.Stock, &p.Sold, &p.IsForSale, &p.IsApproved, &p.CreatedAt, &p.UpdatedAt, pq.Array(&p.ImageUrls),
 			&p.Category.ID, &p.Category.Name, &p.Category.Slug,
 			&p.Toko.ID, &p.Toko.UserID, &p.Toko.Slug, &p.Toko.Name, &p.Toko.Country, &p.Toko.ImageProfile, &p.Toko.CreatedAt,
@@ -340,8 +349,8 @@ func (s *ProductStore) commentsForProductsDetail(ctx context.Context, tx *sql.Tx
 		}
 
 		p.Ulasan = Ulasan{
-			TotalUlasan:    ratingCountMap[p.ID],
-			TotalRating:    totalRating,
+			TotalUlasan:     ratingCountMap[p.ID],
+			TotalRating:     totalRating,
 			RatingBreakdown: ratingBreakdown,
 		}
 	}

@@ -1,0 +1,69 @@
+package main
+
+// import (
+// 	"log"
+// 	"net/http"
+// 	"net/http/httptest"
+// 	"testing"
+
+// 	"github.com/stretchr/testify/mock"
+// 	"github.com/yogaprasetya22/api-gotokopedia/internal/store/cache"
+// )
+
+// func TestGetProduct(t *testing.T) {
+// 	withRedis := config{
+// 		redisCfg: redisConfig{
+// 			enabled: true,
+// 		},
+// 	}
+
+// 	app := newTestApplication(t, withRedis)
+// 	mux := app.mount()
+
+// 	testToken, err := app.authenticator.GenerateToken(nil)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+
+// 	t.Run("seharusnya tidak mengizinkan permintaan yang tidak otentikasi", func(t *testing.T) {
+// 		req, err := http.NewRequest(http.MethodGet, "/api/v1/product/5", nil)
+// 		if err != nil {
+// 			t.Fatal(err)
+// 		}
+
+// 		rr := executeRequest(req, mux)
+
+// 		log.Printf("token: %s", testToken)
+// 		checkResponseCode(t, http.StatusUnauthorized, rr.Code)
+// 	})
+
+// 	t.Run("harus mengizinkan permintaan yang diautentikasi", func(t *testing.T) {
+// 		mockCacheStore := app.cacheStorage.Users.(*cache.MockUserStore)
+
+// 		mockCacheStore.On("Get", int64(5)).Return(nil, nil).Twice()
+// 		mockCacheStore.On("Set", mock.Anything).Return(nil)
+
+// 		// Buat request
+// 		req, err := http.NewRequest(http.MethodGet, "/api/v1/product/5", nil)
+// 		if err != nil {
+// 			t.Fatal(err)
+// 		}
+
+// 		// Tambahkan session dengan token sebelum eksekusi
+// 		session, _ := app.session.Get(req, "auth_token")
+// 		session.Values["auth_token"] = testToken
+
+// 		// Simpan session ke request context
+// 		req = addSessionToRequestContext(req, session)
+
+// 		rr := httptest.NewRecorder()
+
+// 		if err := session.Save(req, rr); err != nil {
+// 			t.Fatal(err)
+// 		}
+
+// 		checkResponseCode(t, http.StatusOK, rr.Code)
+
+// 		mockCacheStore.Calls = nil // Reset mock expectations
+// 	})
+// }
