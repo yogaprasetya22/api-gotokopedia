@@ -12,11 +12,11 @@ import (
 
 // Struct untuk request membuat order
 type createOrderRequest struct {
-	CartID           uuid.UUID `json:"cart_id"`
-	PaymentMethodID  int64     `json:"payment_method_id"`
-	ShippingMethodID int64     `json:"shipping_method_id"`
-	ShippingAddress  string    `json:"shipping_address"`
-	Notes            string    `json:"notes,omitempty"`
+	CartID              uuid.UUID `json:"cart_id"`
+	PaymentMethodID     int64     `json:"payment_method_id"`
+	ShippingMethodID    int64     `json:"shipping_method_id"`
+	ShippingAddressesID uuid.UUID `json:"shipping_addresses_id"`
+	Notes               string    `json:"notes,omitempty"`
 }
 
 // Struct untuk request update status order
@@ -43,18 +43,18 @@ func (app *application) createOrderHandler(w http.ResponseWriter, r *http.Reques
 
 	user := getUserFromContext(r)
 
-	// err = app.store.Orders.CreateFromCart(r.Context(), payload.CartID, user.ID, payload.PaymentMethodID, payload.ShippingMethodID, payload.ShippingAddress, payload.Notes)
-	// if err != nil {
-	// 	switch {
-	// 	case errors.Is(err, store.ErrNotFound):
-	// 		app.notFoundResponse(w, r, err)
-	// 	case errors.Is(err, store.ErrConflict):
-	// 		app.conflictResponse(w, r, err)
-	// 	default:
-	// 		app.internalServerError(w, r, err)
-	// 	}
-	// 	return
-	// }
+	err = app.store.Orders.CreateFromCart(r.Context(), payload.CartID, user.ID, payload.PaymentMethodID, payload.ShippingMethodID, payload.ShippingAddressesID, payload.Notes)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, err)
+		case errors.Is(err, store.ErrConflict):
+			app.conflictResponse(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
 
 	if err := app.jsonResponse(w, http.StatusCreated, user); err != nil {
 		app.internalServerError(w, r, err)

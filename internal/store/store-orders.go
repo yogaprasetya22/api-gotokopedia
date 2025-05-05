@@ -33,7 +33,6 @@ type Order struct {
 	PaymentMethod     *PaymentMethod     `json:"payment_method,omitempty"`
 	Items             []*OrderItem       `json:"items,omitempty"`
 	Tracking          []*OrderTracking   `json:"tracking,omitempty"`
-	User              *User              `json:"user,omitempty"`
 	ShippingAddresses *ShippingAddresses `json:"shipping_addresses,omitempty"`
 }
 
@@ -196,12 +195,17 @@ func (s *OrderStore) GetByUserID(ctx context.Context, userID int64, fq Paginated
 // getUserOrders mendapatkan daftar order tanpa relasi
 func (s *OrderStore) getUserOrders(ctx context.Context, tx *sql.Tx, userID int64, fq PaginatedFeedQuery) ([]*Order, error) {
 	query := `
-		SELECT o.id, o.user_id, o.order_number, o.status_id, 
-			   o.payment_method_id, o.shipping_method_id,
-			   o.shipping_cost, o.total_price, 
-			   o.final_price, o.notes, 
-			   o.created_at, o.updated_at, o.shipping_addresses_id
+		SELECT o.id, o.user_id, o.order_number, o.status_id, o.payment_method_id, 
+			o.shipping_method_id, o.shipping_cost, o.total_price,
+			o.final_price, o.notes, o.created_at, o.updated_at,
+			o.shipping_addresses_id,
+			os.id, os.name, os.description,
+			sm.id, sm.name, sm.description, sm.price, sm.is_active,
+			pm.id, pm.name, pm.description, pm.is_active
 		FROM orders o
+		JOIN order_status os ON o.status_id = os.id
+		JOIN shipping_methods sm ON o.shipping_method_id = sm.id
+		JOIN payment_methods pm ON o.payment_method_id = pm.id
 		WHERE o.user_id = $1
 		ORDER BY o.created_at DESC
 		LIMIT $2 OFFSET $3`
@@ -216,14 +220,33 @@ func (s *OrderStore) getUserOrders(ctx context.Context, tx *sql.Tx, userID int64
 	for rows.Next() {
 		var order Order
 		var shippingAddressesID sql.NullString
-		if err := rows.Scan(
-			&order.ID, &order.UserID, &order.OrderNumber, &order.StatusID,
-			&order.PaymentMethodID, &order.ShippingMethodID,
-			&order.ShippingCost, &order.TotalPrice,
-			&order.FinalPrice, &order.Notes,
-			&order.CreatedAt, &order.UpdatedAt, &shippingAddressesID,
-		); err != nil {
+
+		// Initialize pointer fields before scanning
+		order.Status = &OrderStatus{}
+		order.ShippingMethod = &ShippingMethod{}
+		order.PaymentMethod = &PaymentMethod{}
+
+		err := rows.Scan(
+			&order.ID, &order.UserID, &order.OrderNumber, &order.StatusID, &order.PaymentMethodID,
+			&order.ShippingMethodID, &order.ShippingCost, &order.TotalPrice,
+			&order.FinalPrice, &order.Notes, &order.CreatedAt, &order.UpdatedAt,
+			&shippingAddressesID,
+			&order.Status.ID, &order.Status.Name, &order.Status.Description,
+			&order.ShippingMethod.ID, &order.ShippingMethod.Name, &order.ShippingMethod.Description,
+			&order.ShippingMethod.Price, &order.ShippingMethod.IsActive,
+			&order.PaymentMethod.ID, &order.PaymentMethod.Name, &order.PaymentMethod.Description,
+			&order.PaymentMethod.IsActive,
+		)
+		if err != nil {
 			return nil, err
+		}
+		if shippingAddressesID.Valid {
+			order.ShippingAddressesID, err = uuid.Parse(shippingAddressesID.String)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse shipping addresses ID: %w", err)
+			}
+		} else {
+			order.ShippingAddressesID = uuid.Nil
 		}
 		orders = append(orders, &order)
 	}
@@ -341,7 +364,6 @@ func (s *OrderStore) GetByID(ctx context.Context, id int64) (*Order, error) {
 		Status:            &OrderStatus{},
 		ShippingMethod:    &ShippingMethod{},
 		PaymentMethod:     &PaymentMethod{},
-		User:              &User{},
 		ShippingAddresses: &ShippingAddresses{},
 	}
 
@@ -352,19 +374,14 @@ func (s *OrderStore) GetByID(ctx context.Context, id int64) (*Order, error) {
 			o.shipping_addresses_id,
 			os.id, os.name, os.description,
 			sm.id, sm.name, sm.description, sm.price, sm.is_active,
-			pm.id, pm.name, pm.description, pm.is_active,
-			u.id, u.username, u.email, u.is_active, u.picture, u.created_at
+			pm.id, pm.name, pm.description, pm.is_active
 		FROM orders o
 		JOIN order_status os ON o.status_id = os.id
 		JOIN shipping_methods sm ON o.shipping_method_id = sm.id
 		JOIN payment_methods pm ON o.payment_method_id = pm.id
-		JOIN users u ON o.user_id = u.id
 		WHERE o.id = $1`
 
-	var (
-		userCreatedAt       time.Time
-		shippingAddressesID sql.NullString
-	)
+	var shippingAddressesID sql.NullString
 	err = tx.QueryRowContext(ctx, query, id).Scan(
 		&order.ID, &order.UserID, &order.OrderNumber, &order.StatusID, &order.PaymentMethodID,
 		&order.ShippingMethodID, &order.ShippingCost, &order.TotalPrice,
@@ -375,8 +392,6 @@ func (s *OrderStore) GetByID(ctx context.Context, id int64) (*Order, error) {
 		&order.ShippingMethod.Price, &order.ShippingMethod.IsActive,
 		&order.PaymentMethod.ID, &order.PaymentMethod.Name, &order.PaymentMethod.Description,
 		&order.PaymentMethod.IsActive,
-		&order.User.ID, &order.User.Username, &order.User.Email, &order.User.IsActive,
-		&order.User.Picture, &userCreatedAt,
 	)
 
 	if err != nil {
@@ -385,8 +400,6 @@ func (s *OrderStore) GetByID(ctx context.Context, id int64) (*Order, error) {
 		}
 		return nil, err
 	}
-
-	order.User.CreatedAt = userCreatedAt
 
 	// Get shipping addresses
 	if shippingAddressesID.Valid {
@@ -424,11 +437,17 @@ func (s *OrderStore) getShippingAddressesByID(ctx context.Context, tx *sql.Tx, i
 	defer cancel()
 
 	sa := &ShippingAddresses{}
+	var noteForCourier sql.NullString
 	err := s.db.QueryRowContext(ctx, query, id).Scan(&sa.ID, &sa.UserID, &sa.Label,
 		&sa.RecipientName, &sa.RecipientPhone, &sa.AddressLine1,
-		&sa.NoteForCourier, &sa.CreatedAt, &sa.UpdatedAt)
+		&noteForCourier, &sa.CreatedAt, &sa.UpdatedAt)
 	if err != nil {
 		return nil, err
+	}
+	if noteForCourier.Valid {
+		sa.NoteForCourier = noteForCourier.String
+	} else {
+		sa.NoteForCourier = ""
 	}
 
 	return sa, nil
@@ -535,44 +554,6 @@ func (s *OrderStore) getOrderTrackingTx(ctx context.Context, tx *sql.Tx, order *
 	return nil
 }
 
-// getOrderTracking mendapatkan riwayat status pesanan
-func (s *OrderStore) getOrderTracking(ctx context.Context, order *Order) error {
-	query := `
-		SELECT ot.id, ot.status_id, ot.notes, ot.created_at,
-			os.name, os.description
-		FROM order_tracking ot
-		JOIN order_status os ON ot.status_id = os.id
-		WHERE ot.order_id = $1
-		ORDER BY ot.created_at DESC`
-
-	rows, err := s.db.QueryContext(ctx, query, order.ID)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	var trackings []*OrderTracking
-	for rows.Next() {
-		tracking := &OrderTracking{
-			OrderID: order.ID,
-			Status:  &OrderStatus{},
-		}
-
-		err := rows.Scan(
-			&tracking.ID, &tracking.StatusID, &tracking.Notes, &tracking.CreatedAt,
-			&tracking.Status.Name, &tracking.Status.Description,
-		)
-
-		if err != nil {
-			return err
-		}
-
-		trackings = append(trackings, tracking)
-	}
-
-	order.Tracking = trackings
-	return nil
-}
 
 // GetShippingMethods mendapatkan semua metode pengiriman
 func (s *OrderStore) GetShippingMethods(ctx context.Context) ([]*ShippingMethod, error) {

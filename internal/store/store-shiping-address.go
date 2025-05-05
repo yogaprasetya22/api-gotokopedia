@@ -10,16 +10,16 @@ import (
 )
 
 type ShippingAddresses struct {
-	ID             uuid.UUID      `json:"id"`
-	UserID         int64          `json:"user_id"`
-	IsDefault      bool           `json:"is_default,omitempty"` // Tambahkan ini
-	Label          string         `json:"label"`
-	RecipientName  string         `json:"recipient_name"`
-	RecipientPhone string         `json:"recipient_phone"`
-	AddressLine1   string         `json:"address_line1"`
-	NoteForCourier sql.NullString `json:"note_for_courier"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
+	ID             uuid.UUID `json:"id"`
+	UserID         int64     `json:"user_id"`
+	IsDefault      bool      `json:"is_default,omitempty"` // Tambahkan ini
+	Label          string    `json:"label"`
+	RecipientName  string    `json:"recipient_name"`
+	RecipientPhone string    `json:"recipient_phone"`
+	AddressLine1   string    `json:"address_line1"`
+	NoteForCourier string    `json:"note_for_courier,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 type ShippingAddresStore struct {
@@ -72,12 +72,19 @@ func (s *ShippingAddresStore) GetDefaultAddress(ctx context.Context, userID int6
 	defer cancel()
 
 	sa := &ShippingAddresses{}
+	var noteForCourier sql.NullString
 	err := s.db.QueryRowContext(ctx, query, userID).Scan(
 		&sa.ID, &sa.UserID, &sa.Label,
 		&sa.RecipientName, &sa.RecipientPhone, &sa.AddressLine1,
-		&sa.NoteForCourier, &sa.IsDefault, &sa.CreatedAt, &sa.UpdatedAt)
+		&noteForCourier,
+		&sa.IsDefault, &sa.CreatedAt, &sa.UpdatedAt)
 	if err != nil {
 		return nil, err
+	}
+	if noteForCourier.Valid {
+		sa.NoteForCourier = noteForCourier.String
+	} else {
+		sa.NoteForCourier = ""
 	}
 
 	return sa, nil
