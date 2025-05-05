@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store"
 )
@@ -25,14 +26,14 @@ var usernames = []string{
 }
 
 func TestUserHandler(t *testing.T) {
-	AMOUNT := 20
+	AMOUNT := 50
 	ctx := context.Background()
 
 	storeTest, db := NewTestStorage(t)
 	if storeTest == nil {
 		t.Fatal("store is nil")
 	}
-	
+
 	var result_users []*store.User
 	t.Run("CreateUser", func(t *testing.T) {
 		users := generateUsers(AMOUNT)
@@ -117,12 +118,12 @@ func TestUserHandler(t *testing.T) {
 			// First addition
 			err := storeTest.Carts.AddingQuantityCartStoreItemTransaction(ctx, cart_store.ID, userID)
 			require.NoError(t, err)
-			fmt.Printf("CartStore %d (UserID: %d) (first add)\n", cart_store.ID, userID)
+			fmt.Printf("CartStore %s (UserID: %d) (first add)\n", cart_store.ID.String(), userID)
 
 			// Second addition
 			err = storeTest.Carts.AddingQuantityCartStoreItemTransaction(ctx, cart_store.ID, userID)
 			require.NoError(t, err)
-			fmt.Printf("CartStore %d (UserID: %d) (second add)\n", cart_store.ID, userID)
+			fmt.Printf("CartStore %s (UserID: %d) (second add)\n", cart_store.ID.String(), userID)
 		}
 	})
 
@@ -141,7 +142,23 @@ func TestUserHandler(t *testing.T) {
 			}
 			err := storeTest.Carts.RemovingQuantityCartStoreItemTransaction(ctx, cart_store.ID, userID)
 			require.NoError(t, err)
-			fmt.Printf("CartStore %d (UserID: %d) (remove)\n", cart_store.ID, userID)
+			fmt.Printf("CartStore %s (UserID: %d) (remove)\n", cart_store.ID.String(), userID)
+		}
+	})
+
+	t.Run("CreateShippingAddress", func(t *testing.T) {
+		for _, user := range result_users {
+			addr := &store.ShippingAddresses{
+				UserID:         user.ID,
+				Label:          "Rumah",
+				RecipientName:  fmt.Sprintf("User %d", user.ID),
+				RecipientPhone: fmt.Sprintf("0812345678%d", user.ID),
+				AddressLine1:   fmt.Sprintf("Jl. Alamat Utama No.%d", user.ID),
+			}
+
+			err := storeTest.ShippingAddresses.Create(ctx, addr)
+			require.NoError(t, err)
+			require.NotEqual(t, uuid.Nil, addr.ID)
 		}
 	})
 
@@ -158,10 +175,18 @@ func TestUserHandler(t *testing.T) {
 			if userID == 0 {
 				t.Fatalf("Tidak ditemukan userID untuk cart_store dengan CartID %d", cart_store.CartID)
 			}
-			// Buat order dari cart
-			err := storeTest.Orders.CreateFromCart(ctx, cart_store.ID, userID, 1, 1, "address", "notes")
+			// Ambil id dari shipping address yang sudah dibuat sebelumnya
+			defaultAddr, err := storeTest.ShippingAddresses.GetDefaultAddress(ctx, userID)
 			require.NoError(t, err)
-			fmt.Printf("Order created from CartStore %d (UserID: %d)\n", cart_store.ID, userID)
+			require.NotNil(t, defaultAddr)
+			require.Equal(t, userID, defaultAddr.UserID)
+
+			fmt.Printf("Default address for user %d: %s\n", userID, defaultAddr.AddressLine1)
+
+			// Buat order dari cart
+			err = storeTest.Orders.CreateFromCart(ctx, cart_store.ID, userID, 1, 1, defaultAddr.ID, "notes")
+			require.NoError(t, err)
+			fmt.Printf("Order created from CartStore %s (UserID: %d)\n", cart_store.ID.String(), userID)
 		}
 	})
 

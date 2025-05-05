@@ -43,23 +43,27 @@ func (app *application) createOrderHandler(w http.ResponseWriter, r *http.Reques
 
 	user := getUserFromContext(r)
 
-	err = app.store.Orders.CreateFromCart(r.Context(), payload.CartID, user.ID, payload.PaymentMethodID, payload.ShippingMethodID, payload.ShippingAddress, payload.Notes)
-	if err != nil {
-		switch {
-		case errors.Is(err, store.ErrNotFound):
-			app.notFoundResponse(w, r, err)
-		case errors.Is(err, store.ErrConflict):
-			app.conflictResponse(w, r, err)
-		default:
-			app.internalServerError(w, r, err)
-		}
-		return
-	}
+	// err = app.store.Orders.CreateFromCart(r.Context(), payload.CartID, user.ID, payload.PaymentMethodID, payload.ShippingMethodID, payload.ShippingAddress, payload.Notes)
+	// if err != nil {
+	// 	switch {
+	// 	case errors.Is(err, store.ErrNotFound):
+	// 		app.notFoundResponse(w, r, err)
+	// 	case errors.Is(err, store.ErrConflict):
+	// 		app.conflictResponse(w, r, err)
+	// 	default:
+	// 		app.internalServerError(w, r, err)
+	// 	}
+	// 	return
+	// }
 
-	if err := app.jsonResponse(w, http.StatusCreated, map[string]any{"status": "order created"}); err != nil {
+	if err := app.jsonResponse(w, http.StatusCreated, user); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
+	// if err := app.jsonResponse(w, http.StatusCreated, map[string]any{"status": "order created"}); err != nil {
+	// 	app.internalServerError(w, r, err)
+	// 	return
+	// }
 }
 
 // Handler untuk mengambil detail order

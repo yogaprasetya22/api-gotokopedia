@@ -62,18 +62,34 @@ func (m *MockCartStore) AddToCartTransaction(ctx context.Context, userID, produc
 	return args.Get(0).(*Cart), args.Error(1)
 }
 
+func (m *MockCartStore) GetCartByUserID(ctx context.Context, userID int64, query PaginatedFeedQuery) (*Cart, error) {
+	return &Cart{}, nil
+}
+
 func (m *MockCartStore) AddingQuantityCartStoreItemTransaction(ctx context.Context, cartStoreItemID uuid.UUID, userID int64) error {
 	return nil
 }
 
-func (m *MockCartStore) GetCartByUserID(ctx context.Context, userID int64, query PaginatedFeedQuery) (*Cart, error) {
-	return &Cart{}, nil
+func (m *MockCartStore) RemovingQuantityCartStoreItemTransaction(ctx context.Context, cartStoreItemID uuid.UUID, userID int64) error {
+	return nil
 }
 
 func (m *MockCartStore) GetDetailCartByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) (*CartDetailResponse, error) {
 	return &CartDetailResponse{}, nil
 }
 
-func (m *MockCartStore) RemovingQuantityCartStoreItemTransaction(ctx context.Context, cartStoreItemID uuid.UUID, userID int64) error {
+func (m *MockCartStore) UpdateItemQuantityByCartItemID(ctx context.Context, cartItemID uuid.UUID, quantity int64) error {
+	return nil
+}
+
+func (m *MockCartStore) RemoveItemByCartItemID(ctx context.Context, cartItemID uuid.UUID) error {
+	return nil
+}
+
+func (m *MockCartStore) ClearCartByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) error {
+	return nil
+}
+
+func (m *MockCartStore) RemoveCartItemByID(ctx context.Context, cartItemID uuid.UUID) error {
 	return nil
 }

@@ -578,10 +578,22 @@ func (s *CartStore) RemovingQuantityCartStoreItemTransaction(ctx context.Context
     return tx.Commit()
 }
 
-// UpdateItemQuantity mengupdate jumlah item di keranjang
-func (s *CartStore) UpdateItemQuantity(ctx context.Context, cartID, productID, quantity int64) error {
+// UpdateItemQuantityByCartItemID mengupdate jumlah item di keranjang berdasarkan cartItemID
+func (s *CartStore) UpdateItemQuantityByCartItemID(ctx context.Context, cartItemID uuid.UUID, quantity int64) error {
 	if quantity <= 0 {
-		return s.RemoveItem(ctx, cartID, productID)
+		// Jika quantity <= 0, hapus item
+		tx, err := s.db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+
+		_, err = tx.ExecContext(ctx, `DELETE FROM cart_items WHERE id = $1`, cartItemID)
+		if err != nil {
+			return err
+		}
+
+		return tx.Commit()
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -590,19 +602,8 @@ func (s *CartStore) UpdateItemQuantity(ctx context.Context, cartID, productID, q
 	}
 	defer tx.Rollback()
 
-	// Dapatkan cart_store_id dari item yang akan diupdate
-	var cartStoreID int64
-	err = tx.QueryRowContext(ctx,
-		`SELECT cart_store_id FROM cart_items WHERE cart_id = $1 AND product_id = $2`,
-		cartID, productID,
-	).Scan(&cartStoreID)
-	if err != nil {
-		return err
-	}
-
-	query := `UPDATE cart_items SET quantity = $1, updated_at = $2
-              WHERE cart_id = $3 AND product_id = $4 AND cart_store_id = $5`
-	_, err = tx.ExecContext(ctx, query, quantity, time.Now(), cartID, productID, cartStoreID)
+	query := `UPDATE cart_items SET quantity = $1, updated_at = $2 WHERE id = $3`
+	_, err = tx.ExecContext(ctx, query, quantity, time.Now(), cartItemID)
 	if err != nil {
 		return err
 	}
@@ -610,32 +611,44 @@ func (s *CartStore) UpdateItemQuantity(ctx context.Context, cartID, productID, q
 	return tx.Commit()
 }
 
-// RemoveItem menghapus item dari keranjang
-func (s *CartStore) RemoveItem(ctx context.Context, cartID, productID int64) error {
+// RemoveItemByCartItemID menghapus item dari keranjang berdasarkan cartItemID
+func (s *CartStore) RemoveItemByCartItemID(ctx context.Context, cartItemID uuid.UUID) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+
+	// Dapatkan cart_id dan cart_store_id dari cart_items
+	var cartID int64
+	var cartStoreID uuid.UUID
+	query := `SELECT cart_id, cart_store_id FROM cart_items WHERE id = $1`
+	err = tx.QueryRowContext(ctx, query, cartItemID).Scan(&cartID, &cartStoreID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Item sudah tidak ada, anggap sukses
+			return nil
+		}
+		return err
+	}
 
 	// Hapus item
 	_, err = tx.ExecContext(ctx,
-		`DELETE FROM cart_items WHERE cart_id = $1 AND product_id = $2`,
-		cartID, productID,
+		`DELETE FROM cart_items WHERE id = $1`,
+		cartItemID,
 	)
 	if err != nil {
 		return err
 	}
 
-	// Hapus cart_store yang kosong (tidak ada item lagi)
+	// Hapus cart_store jika sudah tidak ada item lagi
 	_, err = tx.ExecContext(ctx,
-		`DELETE FROM cart_stores cs 
-         WHERE cs.cart_id = $1 
-         AND NOT EXISTS (
-             SELECT 1 FROM cart_items ci 
-             WHERE ci.cart_store_id = cs.id
-         )`,
-		cartID,
+		`DELETE FROM cart_stores 
+		 WHERE id = $1 
+		 AND NOT EXISTS (
+			 SELECT 1 FROM cart_items WHERE cart_store_id = $1
+		 )`,
+		cartStoreID,
 	)
 	if err != nil {
 		return err
@@ -644,27 +657,78 @@ func (s *CartStore) RemoveItem(ctx context.Context, cartID, productID int64) err
 	return tx.Commit()
 }
 
-// ClearCart menghapus semua item dari keranjang
-func (s *CartStore) ClearCart(ctx context.Context, cartID int64) error {
+// ClearCartByCartStoreID menghapus semua item dari cart_store tertentu dan cart_store-nya
+func (s *CartStore) ClearCartByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	// Hapus semua item di cart
+	// Hapus semua item di cart_store, pastikan cart_store milik user
 	_, err = tx.ExecContext(ctx,
-		`DELETE FROM cart_items WHERE cart_id = $1`,
-		cartID,
+		`DELETE FROM cart_items 
+		 WHERE cart_store_id = $1 
+		 AND cart_id = (SELECT id FROM carts WHERE user_id = $2)`,
+		cartStoreID,
+		userID,
 	)
 	if err != nil {
 		return err
 	}
 
-	// Hapus semua cart_store di cart
+	// Hapus cart_store jika memang milik user
 	_, err = tx.ExecContext(ctx,
-		`DELETE FROM cart_stores WHERE cart_id = $1`,
-		cartID,
+		`DELETE FROM cart_stores 
+		 WHERE id = $1 
+		 AND cart_id = (SELECT id FROM carts WHERE user_id = $2)`,
+		cartStoreID,
+		userID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// RemoveCartItemByID menghapus satu item dari cart berdasarkan cartItemID
+func (s *CartStore) RemoveCartItemByID(ctx context.Context, cartItemID uuid.UUID) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Dapatkan cart_store_id dari cart_items
+	var cartStoreID uuid.UUID
+	query := `SELECT cart_store_id FROM cart_items WHERE id = $1`
+	err = tx.QueryRowContext(ctx, query, cartItemID).Scan(&cartStoreID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Item sudah tidak ada, anggap sukses
+			return nil
+		}
+		return err
+	}
+
+	// Hapus item
+	_, err = tx.ExecContext(ctx,
+		`DELETE FROM cart_items WHERE id = $1`,
+		cartItemID,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Hapus cart_store jika sudah tidak ada item lagi
+	_, err = tx.ExecContext(ctx,
+		`DELETE FROM cart_stores 
+		 WHERE id = $1 
+		 AND NOT EXISTS (
+			 SELECT 1 FROM cart_items WHERE cart_store_id = $1
+		 )`,
+		cartStoreID,
 	)
 	if err != nil {
 		return err

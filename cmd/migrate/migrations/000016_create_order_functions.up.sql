@@ -1,18 +1,22 @@
--- Function to generate order number
+CREATE SEQUENCE IF NOT EXISTS order_number_seq;
+
 CREATE OR REPLACE FUNCTION generate_order_number() 
 RETURNS varchar(50) AS $$
-DECLARE
-    new_order_number varchar(50);
 BEGIN
-    new_order_number := 'ORD-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(floor(random() * 10000)::text, 4, '0');
-    RETURN new_order_number;
+    RETURN 'ORD-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(nextval('order_number_seq')::text, 6, '0');
 END;
 $$ LANGUAGE plpgsql;
--- DROP FUNCTION public.create_order_from_cart(int8, uuid, int8, int8, text, text);
 
-CREATE OR REPLACE FUNCTION public.create_order_from_cart(p_user_id bigint, p_cart_store_id uuid, p_payment_method_id bigint, p_shipping_method_id bigint, p_shipping_address text, p_notes text DEFAULT NULL::text)
- RETURNS bigint
- LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION public.create_order_from_cart(
+    p_user_id bigint,
+    p_cart_store_id uuid,
+    p_payment_method_id bigint,
+    p_shipping_method_id bigint,
+    p_shipping_addresses_id uuid,
+    p_notes text DEFAULT NULL::text
+)
+RETURNS bigint
+LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_order_id bigint;
@@ -49,7 +53,7 @@ BEGIN
         status_id,
         payment_method_id,
         shipping_method_id,
-        shipping_address,
+        shipping_addresses_id,
         shipping_cost,
         total_price,
         final_price,
@@ -60,7 +64,7 @@ BEGIN
         1, -- Pending status
         p_payment_method_id,
         p_shipping_method_id,
-        p_shipping_address,
+        p_shipping_addresses_id,
         v_shipping_cost,
         0, -- Will be calculated
         0, -- Will be calculated
@@ -122,8 +126,7 @@ BEGIN
     
     RETURN v_order_id;
 END;
-$function$
-;
+$function$;
 
 
 -- Function to update order status

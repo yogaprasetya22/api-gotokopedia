@@ -31,7 +31,6 @@ CREATE TABLE
         shipping_addresses_id uuid NOT NULL,
         shipping_cost float8 NOT NULL,
         total_price float8 NOT NULL,
-        discount float8 DEFAULT 0 NOT NULL,
         final_price float8 NOT NULL,
         notes text NULL,
         created_at timestamptz (0) DEFAULT now () NOT NULL,
