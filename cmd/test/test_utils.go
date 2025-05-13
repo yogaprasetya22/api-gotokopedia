@@ -7,6 +7,7 @@ import (
 	"github.com/yogaprasetya22/api-gotokopedia/internal/db"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/env"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store"
+	"github.com/yogaprasetya22/api-gotokopedia/internal/store/cache"
 
 	"context"
 	"database/sql"
@@ -62,31 +63,32 @@ func NewTestDB(t *testing.T) *sql.DB {
 	return conn
 }
 
-func NewTestStorage(t *testing.T) (*store.Storage, *sql.DB) {
+func NewTestStorage(t *testing.T) (*store.Storage, *sql.DB, *cache.Storage) {
+	mockCacheStore := cache.NewMockStore()
 	db := NewTestDB(t)
 	storage := store.NewStorage(db)
-	return &storage, db
+	return &storage, db, &mockCacheStore
 }
 func WithTransaction(t *testing.T, db *sql.DB, fn func(tx *sql.Tx) error) {
-    tx, err := db.Begin()
-    if err != nil {
-        t.Fatalf("failed to begin transaction: %v", err)
-    }
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("failed to begin transaction: %v", err)
+	}
 
-    var fnErr error
+	var fnErr error
 
-    defer func() {
-        if p := recover(); p != nil {
-            tx.Rollback()
-            panic(p)
-        } else if t.Failed() || fnErr != nil {
-            tx.Rollback()
-        } else {
-            if err := tx.Commit(); err != nil {
-                t.Fatalf("failed to commit transaction: %v", err)
-            }
-        }
-    }()
+	defer func() {
+		if p := recover(); p != nil {
+			tx.Rollback()
+			panic(p)
+		} else if t.Failed() || fnErr != nil {
+			tx.Rollback()
+		} else {
+			if err := tx.Commit(); err != nil {
+				t.Fatalf("failed to commit transaction: %v", err)
+			}
+		}
+	}()
 
-    fnErr = fn(tx)
+	fnErr = fn(tx)
 }

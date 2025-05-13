@@ -11,6 +11,24 @@ definitions:
     - product_id
     - quantity
     type: object
+  main.CompleteCheckoutPayload:
+    properties:
+      notes:
+        type: string
+      payment_method_id:
+        type: integer
+      session_id:
+        type: string
+      shipping_address_id:
+        type: string
+      shipping_method_id:
+        type: integer
+    required:
+    - payment_method_id
+    - session_id
+    - shipping_address_id
+    - shipping_method_id
+    type: object
   main.CreateCategoryRequest:
     properties:
       description:
@@ -133,6 +151,15 @@ definitions:
     - password
     - username
     type: object
+  main.StartCheckoutPayload:
+    properties:
+      cart_store_id:
+        items:
+          type: string
+        type: array
+    required:
+    - cart_store_id
+    type: object
   main.UpdateCommentsPayload:
     properties:
       content:
@@ -184,10 +211,6 @@ definitions:
         type: string
       id:
         type: integer
-      items:
-        items:
-          $ref: '#/definitions/store.CartItem'
-        type: array
       stores:
         description: Relasi
         items:
@@ -202,8 +225,6 @@ definitions:
     properties:
       cart_id:
         type: integer
-      cart_store:
-        $ref: '#/definitions/store.CartStores'
       cart_store_id:
         description: Nullable di database
         type: string
@@ -252,6 +273,27 @@ definitions:
       slug:
         type: string
     type: object
+  store.CheckoutSession:
+    properties:
+      cart_store:
+        items:
+          $ref: '#/definitions/store.CartStores'
+        type: array
+      created_at:
+        type: string
+      expires_at:
+        type: string
+      payment_method:
+        $ref: '#/definitions/store.PaymentMethod'
+      session_id:
+        type: string
+      shipping_address:
+        $ref: '#/definitions/store.ShippingAddresses'
+      shipping_method:
+        $ref: '#/definitions/store.ShippingMethod'
+      user_id:
+        type: integer
+    type: object
   store.Comment:
     properties:
       content:
@@ -270,6 +312,119 @@ definitions:
         $ref: '#/definitions/store.User'
       user_id:
         type: integer
+    type: object
+  store.Order:
+    properties:
+      created_at:
+        type: string
+      final_price:
+        type: number
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/store.OrderItem'
+        type: array
+      notes:
+        type: string
+      order_number:
+        type: string
+      payment_method:
+        $ref: '#/definitions/store.PaymentMethod'
+      payment_method_id:
+        type: integer
+      shipping_addresses:
+        $ref: '#/definitions/store.ShippingAddresses'
+      shipping_addresses_id:
+        type: string
+      shipping_cost:
+        type: number
+      shipping_method:
+        $ref: '#/definitions/store.ShippingMethod'
+      shipping_method_id:
+        type: integer
+      status:
+        allOf:
+        - $ref: '#/definitions/store.OrderStatus'
+        description: Relasi
+      status_id:
+        type: integer
+      total_price:
+        type: number
+      tracking:
+        items:
+          $ref: '#/definitions/store.OrderTracking'
+        type: array
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  store.OrderItem:
+    properties:
+      created_at:
+        type: string
+      discount:
+        type: number
+      discount_price:
+        type: number
+      id:
+        type: integer
+      order_id:
+        type: integer
+      price:
+        type: number
+      product:
+        allOf:
+        - $ref: '#/definitions/store.Product'
+        description: Relasi
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+      subtotal:
+        type: number
+      toko:
+        $ref: '#/definitions/store.Toko'
+      toko_id:
+        type: integer
+    type: object
+  store.OrderStatus:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  store.OrderTracking:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      notes:
+        type: string
+      order_id:
+        type: integer
+      status:
+        allOf:
+        - $ref: '#/definitions/store.OrderStatus'
+        description: Relasi
+      status_id:
+        type: integer
+    type: object
+  store.PaymentMethod:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      name:
+        type: string
     type: object
   store.Product:
     properties:
@@ -326,6 +481,43 @@ definitions:
         type: integer
       name:
         type: string
+    type: object
+  store.ShippingAddresses:
+    properties:
+      address_line1:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      is_default:
+        description: Tambahkan ini
+        type: boolean
+      label:
+        type: string
+      note_for_courier:
+        type: string
+      recipient_name:
+        type: string
+      recipient_phone:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  store.ShippingMethod:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      name:
+        type: string
+      price:
+        type: number
     type: object
   store.SingleUser:
     properties:
@@ -478,6 +670,19 @@ paths:
       consumes:
       - application/json
       description: fetch a cart
+      parameters:
+      - description: limit
+        in: query
+        name: limit
+        type: integer
+      - description: offset
+        in: query
+        name: offset
+        type: integer
+      - description: sort
+        in: query
+        name: sort
+        type: string
       produces:
       - application/json
       responses:
@@ -826,6 +1031,66 @@ paths:
       summary: create category
       tags:
       - category
+  /checkout/complete:
+    post:
+      consumes:
+      - application/json
+      description: Complete checkout process and create order
+      parameters:
+      - description: Payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.CompleteCheckoutPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Order'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Complete checkout process
+      tags:
+      - checkout
+  /checkout/start:
+    post:
+      consumes:
+      - application/json
+      description: Start checkout process and create session
+      parameters:
+      - description: Payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/main.StartCheckoutPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.CheckoutSession'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Start checkout process
+      tags:
+      - checkout
   /comment/{slug}:
     get:
       consumes:
@@ -1106,6 +1371,30 @@ paths:
       summary: Updates a Comment
       tags:
       - comment
+  /shipping-addresses:
+    get:
+      consumes:
+      - application/json
+      description: Get the default shipping address for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.ShippingAddresses'
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      - ApiKeyAuth: []
+      summary: Get default shipping address
+      tags:
+      - shipping-address
   /toko:
     post:
       consumes:

@@ -56,14 +56,10 @@ func (app *application) createOrderHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := app.jsonResponse(w, http.StatusCreated, user); err != nil {
+	if err := app.jsonResponse(w, http.StatusCreated, map[string]any{"status": "order created"}); err != nil {
 		app.internalServerError(w, r, err)
 		return
 	}
-	// if err := app.jsonResponse(w, http.StatusCreated, map[string]any{"status": "order created"}); err != nil {
-	// 	app.internalServerError(w, r, err)
-	// 	return
-	// }
 }
 
 // Handler untuk mengambil detail order

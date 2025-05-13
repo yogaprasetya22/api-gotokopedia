@@ -11,7 +11,7 @@ import (
 
 func TestTokoStore_CRUD(t *testing.T) {
     ctx := context.Background()
-    storeTest, db := NewTestStorage(t)
+    storeTest, db,_ := NewTestStorage(t)
     require.NotNil(t, storeTest)
     require.NotNil(t, db)
 

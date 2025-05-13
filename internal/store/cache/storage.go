@@ -2,9 +2,15 @@ package cache
 
 import (
 	"context"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store"
+)
+
+const (
+	checkoutExpTime = 24 * time.Hour
+	lockExpTime     = 24 * time.Hour
 )
 
 type Storage struct {
@@ -23,6 +29,13 @@ type Storage struct {
 		Set(context.Context, *store.Cart) error
 		Delete(context.Context, int64)
 	}
+	Checkout interface {
+		StartCheckoutSession(ctx context.Context, userID int64, cartStore []store.CartStores) (*store.CheckoutSession, error)
+		GetCheckoutSession(ctx context.Context, sessionID string) (*store.CheckoutSession, error)
+		CompleteCheckout(ctx context.Context, sessionID string) error
+		sessionKey(sessionID string) string
+		inventoryLockKey(productID int64) string
+	}
 }
 
 func NewRedisStore(rbd *redis.Client) Storage {
@@ -30,5 +43,6 @@ func NewRedisStore(rbd *redis.Client) Storage {
 		Users:    &UserStore{rdb: rbd},
 		Products: &ProductStore{rdb: rbd},
 		Carts:    &CartStore{rdb: rbd},
+		Checkout: &CheckoutStore{rdb: rbd},
 	}
 }

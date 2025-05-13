@@ -12,7 +12,7 @@ import (
 
 func TestOrderHandler(t *testing.T) {
 	ctx := context.Background()
-	storeTest, db := NewTestStorage(t)
+	storeTest, db,_ := NewTestStorage(t)
 	require.NotNil(t, storeTest)
 
 	// Ambil user yang sudah ada
@@ -63,19 +63,19 @@ func TestOrderHandler(t *testing.T) {
 		require.NotNil(t, address)
 
 		// Ambil cart user
-		cart, err := storeTest.Carts.GetCartByUserID(ctx, userID, store.PaginatedFeedQuery{
+		cart, err := storeTest.Carts.GetCartByUserIDPQ(ctx, userID, store.PaginatedFeedQuery{
 			Limit:  10,
 			Offset: 0,
 			Sort:   "desc",
 		})
 		require.NoError(t, err)
 		require.NotNil(t, cart)
-		if len(cart.Stores) == 0 {
+		if len(cart.Cart.Stores) == 0 {
 			continue // skip user tanpa cart
 		}
 
 		// Buat order dari cart store pertama
-		cartStoreID := cart.Stores[0].ID
+		cartStoreID := cart.Cart.Stores[0].ID
 		t.Run("CreateFromCart", func(t *testing.T) {
 			err := storeTest.Orders.CreateFromCart(ctx, cartStoreID, userID, paymentMethodID, shippingMethodID, address.ID, "unit test order")
 			require.NoError(t, err)

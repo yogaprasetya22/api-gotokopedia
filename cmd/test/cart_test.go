@@ -10,7 +10,7 @@ import (
 
 func TestCartHandler(t *testing.T) {
 	ctx := context.Background()
-	storeTest, db := NewTestStorage(t)
+	storeTest, db,_ := NewTestStorage(t)
 	require.NotNil(t, storeTest)
 
 	// Ambil user yang sudah ada
@@ -47,25 +47,25 @@ func TestCartHandler(t *testing.T) {
 			require.NotNil(t, cart)
 		})
 
-		t.Run("GetCartByUserID", func(t *testing.T) {
-			cart, err := storeTest.Carts.GetCartByUserID(ctx, userID, store.PaginatedFeedQuery{
+		t.Run("GetCartByUserIDPQ", func(t *testing.T) {
+			cart, err := storeTest.Carts.GetCartByUserIDPQ(ctx, userID, store.PaginatedFeedQuery{
 				Limit:  10,
 				Offset: 0,
 				Sort:   "desc",
 			})
 			require.NoError(t, err)
 			require.NotNil(t, cart)
-			if len(cart.Stores) > 0 && len(cart.Stores[0].Items) > 0 {
-				cartStoreItemID := cart.Stores[0].Items[0].ID
-				cartItemID := cart.Stores[0].Items[0].ID
+			if len(cart.Cart.Stores) > 0 && len(cart.Cart.Stores[0].Items) > 0 {
+				cartStoreItemID := cart.Cart.Stores[0].Items[0].ID
+				cartItemID := cart.Cart.Stores[0].Items[0].ID
 
-				t.Run("AddingQuantityCartStoreItemTransaction", func(t *testing.T) {
-					err := storeTest.Carts.AddingQuantityCartStoreItemTransaction(ctx, cartStoreItemID, userID)
+				t.Run("IncreaseQuantityCartStoreItemTransaction", func(t *testing.T) {
+					err := storeTest.Carts.IncreaseQuantityCartStoreItemTransaction(ctx, cartStoreItemID, userID)
 					require.NoError(t, err)
 				})
 
-				t.Run("RemovingQuantityCartStoreItemTransaction", func(t *testing.T) {
-					err := storeTest.Carts.RemovingQuantityCartStoreItemTransaction(ctx, cartStoreItemID, userID)
+				t.Run("DecreaseQuantityCartStoreItemTransaction", func(t *testing.T) {
+					err := storeTest.Carts.DecreaseQuantityCartStoreItemTransaction(ctx, cartStoreItemID, userID)
 					require.NoError(t, err)
 				})
 
@@ -84,18 +84,18 @@ func TestCartHandler(t *testing.T) {
 
 		t.Run("ClearCart", func(t *testing.T) {
 			for _, userID := range userIDs {
-				t.Run("GetCartByUserID", func(t *testing.T) {
-					cart, err := storeTest.Carts.GetCartByUserID(ctx, userID, store.PaginatedFeedQuery{
+				t.Run("GetCartByUserIDPQ", func(t *testing.T) {
+					cart, err := storeTest.Carts.GetCartByUserIDPQ(ctx, userID, store.PaginatedFeedQuery{
 						Limit:  10,
 						Offset: 0,
 						Sort:   "desc",
 					})
 					require.NoError(t, err)
 					require.NotNil(t, cart)
-					if len(cart.Stores) > 0 && len(cart.Stores[0].Items) > 0 {
-						cartStoreItemID := cart.Stores[0].Items[0].ID
+					if len(cart.Cart.Stores) > 0 && len(cart.Cart.Stores[0].Items) > 0 {
+						cartStoreItemID := cart.Cart.Stores[0].Items[0].ID
 						// Pastikan cart ada
-						cart, err := storeTest.Carts.GetCartByUserID(ctx, userID, store.PaginatedFeedQuery{
+						cart, err := storeTest.Carts.GetCartByUserIDPQ(ctx, userID, store.PaginatedFeedQuery{
 							Limit:  10,
 							Offset: 0,
 							Sort:   "desc",

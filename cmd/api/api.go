@@ -227,6 +227,20 @@ func (app *application) mount() *chi.Mux {
 			})
 		})
 
+		/// shipping addresses
+		r.Route("/shipping-addresses", func(r chi.Router) {
+			r.Use(app.AuthTokenMiddleware)
+
+			r.Get("/", app.getShippingAddressHandler)
+		})
+
+		r.Route("/checkout", func(r chi.Router) {
+			r.Use(app.AuthTokenMiddleware)
+			
+			r.Post("/start", app.startCheckoutHandler)
+			r.Post("/complete", app.completeCheckoutHandler)
+		})
+
 		/// user
 		r.Route("/users", func(r chi.Router) {
 			r.Put("/activate/{token}", app.activateUserHandler)

@@ -145,6 +145,26 @@ const docTemplate = `{
                     "cart"
                 ],
                 "summary": "fetch a cart",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort",
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -663,6 +683,100 @@ const docTemplate = `{
                 }
             }
         },
+        "/checkout/complete": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Complete checkout process and create order",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checkout"
+                ],
+                "summary": "Complete checkout process",
+                "parameters": [
+                    {
+                        "description": "Payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.CompleteCheckoutPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.Order"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
+        "/checkout/start": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Start checkout process and create session",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checkout"
+                ],
+                "summary": "Start checkout process",
+                "parameters": [
+                    {
+                        "description": "Payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.StartCheckoutPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.CheckoutSession"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
         "/comment/{slug}": {
             "get": {
                 "description": "Get all comments for a product",
@@ -1087,6 +1201,45 @@ const docTemplate = `{
                 }
             }
         },
+        "/shipping-addresses": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get the default shipping address for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shipping-address"
+                ],
+                "summary": "Get default shipping address",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/store.ShippingAddresses"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {}
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {}
+                    }
+                }
+            }
+        },
         "/toko": {
             "post": {
                 "security": [
@@ -1437,6 +1590,32 @@ const docTemplate = `{
                 }
             }
         },
+        "main.CompleteCheckoutPayload": {
+            "type": "object",
+            "required": [
+                "payment_method_id",
+                "session_id",
+                "shipping_address_id",
+                "shipping_method_id"
+            ],
+            "properties": {
+                "notes": {
+                    "type": "string"
+                },
+                "payment_method_id": {
+                    "type": "integer"
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "shipping_address_id": {
+                    "type": "string"
+                },
+                "shipping_method_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "main.CreateCategoryRequest": {
             "type": "object",
             "required": [
@@ -1607,6 +1786,20 @@ const docTemplate = `{
                 }
             }
         },
+        "main.StartCheckoutPayload": {
+            "type": "object",
+            "required": [
+                "cart_store_id"
+            ],
+            "properties": {
+                "cart_store_id": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "main.UpdateCommentsPayload": {
             "type": "object",
             "properties": {
@@ -1682,12 +1875,6 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/store.CartItem"
-                    }
-                },
                 "stores": {
                     "description": "Relasi",
                     "type": "array",
@@ -1708,9 +1895,6 @@ const docTemplate = `{
             "properties": {
                 "cart_id": {
                     "type": "integer"
-                },
-                "cart_store": {
-                    "$ref": "#/definitions/store.CartStores"
                 },
                 "cart_store_id": {
                     "description": "Nullable di database",
@@ -1789,6 +1973,38 @@ const docTemplate = `{
                 }
             }
         },
+        "store.CheckoutSession": {
+            "type": "object",
+            "properties": {
+                "cart_store": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.CartStores"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "$ref": "#/definitions/store.PaymentMethod"
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "shipping_address": {
+                    "$ref": "#/definitions/store.ShippingAddresses"
+                },
+                "shipping_method": {
+                    "$ref": "#/definitions/store.ShippingMethod"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "store.Comment": {
             "type": "object",
             "properties": {
@@ -1815,6 +2031,184 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "store.Order": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "final_price": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.OrderItem"
+                    }
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "order_number": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "$ref": "#/definitions/store.PaymentMethod"
+                },
+                "payment_method_id": {
+                    "type": "integer"
+                },
+                "shipping_addresses": {
+                    "$ref": "#/definitions/store.ShippingAddresses"
+                },
+                "shipping_addresses_id": {
+                    "type": "string"
+                },
+                "shipping_cost": {
+                    "type": "number"
+                },
+                "shipping_method": {
+                    "$ref": "#/definitions/store.ShippingMethod"
+                },
+                "shipping_method_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "Relasi",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.OrderStatus"
+                        }
+                    ]
+                },
+                "status_id": {
+                    "type": "integer"
+                },
+                "total_price": {
+                    "type": "number"
+                },
+                "tracking": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/store.OrderTracking"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "store.OrderItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "discount": {
+                    "type": "number"
+                },
+                "discount_price": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "order_id": {
+                    "type": "integer"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "product": {
+                    "description": "Relasi",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.Product"
+                        }
+                    ]
+                },
+                "product_id": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "subtotal": {
+                    "type": "number"
+                },
+                "toko": {
+                    "$ref": "#/definitions/store.Toko"
+                },
+                "toko_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "store.OrderStatus": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "store.OrderTracking": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "Relasi",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/store.OrderStatus"
+                        }
+                    ]
+                },
+                "status_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "store.PaymentMethod": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },
@@ -1900,6 +2294,62 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "store.ShippingAddresses": {
+            "type": "object",
+            "properties": {
+                "address_line1": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_default": {
+                    "description": "Tambahkan ini",
+                    "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "note_for_courier": {
+                    "type": "string"
+                },
+                "recipient_name": {
+                    "type": "string"
+                },
+                "recipient_phone": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "store.ShippingMethod": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
                 }
             }
         },

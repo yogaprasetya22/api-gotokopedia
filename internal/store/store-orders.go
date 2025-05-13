@@ -581,6 +581,26 @@ func (s *OrderStore) GetShippingMethods(ctx context.Context) ([]*ShippingMethod,
 	return methods, nil
 }
 
+// GetShippingMethodByID mendapatkan metode pengiriman berdasarkan ID
+func (s *OrderStore) GetShippingMethodByID(ctx context.Context, id int64) (*ShippingMethod, error) {
+	query := `SELECT id, name, description, price, is_active FROM shipping_methods WHERE id = $1`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	method := &ShippingMethod{}
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
+		&method.ID, &method.Name, &method.Description, &method.Price, &method.IsActive,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return method, nil
+}
+
 // GetPaymentMethods mendapatkan semua metode pembayaran
 func (s *OrderStore) GetPaymentMethods(ctx context.Context) ([]*PaymentMethod, error) {
 	query := `SELECT id, name, description, is_active FROM payment_methods WHERE is_active = true`
@@ -605,4 +625,24 @@ func (s *OrderStore) GetPaymentMethods(ctx context.Context) ([]*PaymentMethod, e
 	}
 
 	return methods, nil
+}
+
+// GetPaymentMethodByID mendapatkan metode pembayaran berdasarkan ID
+func (s *OrderStore) GetPaymentMethodByID(ctx context.Context, id int64) (*PaymentMethod, error) {
+	query := `SELECT id, name, description, is_active FROM payment_methods WHERE id = $1`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	method := &PaymentMethod{}
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
+		&method.ID, &method.Name, &method.Description, &method.IsActive,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return method, nil
 }

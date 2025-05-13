@@ -29,7 +29,7 @@ func TestUserHandler(t *testing.T) {
 	AMOUNT := 50
 	ctx := context.Background()
 
-	storeTest, db := NewTestStorage(t)
+	storeTest, db,_ := NewTestStorage(t)
 	if storeTest == nil {
 		t.Fatal("store is nil")
 	}
@@ -74,20 +74,22 @@ func TestUserHandler(t *testing.T) {
 	var result_cart []*store.Cart
 	t.Run("CreateCartByUser", func(t *testing.T) {
 		for _, user := range result_users {
-			var cart *store.Cart
-			var err error
-			cart, err = storeTest.Carts.AddToCartTransaction(ctx, user.ID, RandomInt(1, 400), 1)
-			require.NoError(t, err)
-			require.NotNil(t, cart)
-			result_cart = append(result_cart, cart)
-			fmt.Printf("User %s (%s) created with ID %d\n", user.Username, user.Email, user.ID)
+			for i := 0; i < 20; i++ {
+				var cart *store.Cart
+				var err error
+				cart, err = storeTest.Carts.AddToCartTransaction(ctx, user.ID, RandomInt(1, 400), 1)
+				require.NoError(t, err)
+				require.NotNil(t, cart)
+				result_cart = append(result_cart, cart)
+				fmt.Printf("User %s (%s) created cart #%d with ID %d\n", user.Username, user.Email, i+1, cart.ID)
+			}
 		}
 	})
 
 	var result_cart_store []*store.CartStores
-	t.Run("GetCartByUserID", func(t *testing.T) {
+	t.Run("GetCartByUserIDPQ", func(t *testing.T) {
 		for _, cart := range result_cart {
-			cartStore, err := storeTest.Carts.GetCartByUserID(ctx, cart.UserID, store.PaginatedFeedQuery{
+			cartStore, err := storeTest.Carts.GetCartByUserIDPQ(ctx, cart.UserID, store.PaginatedFeedQuery{
 				Limit:  AMOUNT,
 				Offset: 0,
 				Sort:   "desc",
@@ -95,14 +97,14 @@ func TestUserHandler(t *testing.T) {
 			})
 			require.NoError(t, err)
 			require.NotNil(t, cartStore)
-			for i := range cartStore.Stores {
-				result_cart_store = append(result_cart_store, &cartStore.Stores[i])
+			for i := range cartStore.Cart.Stores {
+				result_cart_store = append(result_cart_store, &cartStore.Cart.Stores[i])
 			}
 			fmt.Printf("Cart %d (%d) created with ID %d\n", cart.ID, cart.UserID, cart.ID)
 		}
 	})
 
-	t.Run("AddingQuantityCartStoreItemTransaction", func(t *testing.T) {
+	t.Run("IncreaseQuantityCartStoreItemTransaction", func(t *testing.T) {
 		for _, cart_store := range result_cart_store {
 			// Cari cart yang sesuai berdasarkan CartID
 			var userID int64
@@ -116,18 +118,18 @@ func TestUserHandler(t *testing.T) {
 				t.Fatalf("Tidak ditemukan userID untuk cart_store dengan CartID %d", cart_store.CartID)
 			}
 			// First addition
-			err := storeTest.Carts.AddingQuantityCartStoreItemTransaction(ctx, cart_store.ID, userID)
+			err := storeTest.Carts.IncreaseQuantityCartStoreItemTransaction(ctx, cart_store.ID, userID)
 			require.NoError(t, err)
 			fmt.Printf("CartStore %s (UserID: %d) (first add)\n", cart_store.ID.String(), userID)
 
 			// Second addition
-			err = storeTest.Carts.AddingQuantityCartStoreItemTransaction(ctx, cart_store.ID, userID)
+			err = storeTest.Carts.IncreaseQuantityCartStoreItemTransaction(ctx, cart_store.ID, userID)
 			require.NoError(t, err)
 			fmt.Printf("CartStore %s (UserID: %d) (second add)\n", cart_store.ID.String(), userID)
 		}
 	})
 
-	t.Run("RemovingQuantityCartStoreItemTransaction", func(t *testing.T) {
+	t.Run("DecreaseQuantityCartStoreItemTransaction", func(t *testing.T) {
 		for _, cart_store := range result_cart_store {
 			// Cari cart yang sesuai berdasarkan CartID
 			var userID int64
@@ -140,7 +142,7 @@ func TestUserHandler(t *testing.T) {
 			if userID == 0 {
 				t.Fatalf("Tidak ditemukan userID untuk cart_store dengan CartID %d", cart_store.CartID)
 			}
-			err := storeTest.Carts.RemovingQuantityCartStoreItemTransaction(ctx, cart_store.ID, userID)
+			err := storeTest.Carts.DecreaseQuantityCartStoreItemTransaction(ctx, cart_store.ID, userID)
 			require.NoError(t, err)
 			fmt.Printf("CartStore %s (UserID: %d) (remove)\n", cart_store.ID.String(), userID)
 		}

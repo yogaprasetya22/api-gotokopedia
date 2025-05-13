@@ -30,17 +30,21 @@ type UpdateCartItemPayload struct {
 //	@Tags			cart
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	store.Cart
-//	@Failure		400	{object}	error
-//	@Failure		404	{object}	error
-//	@Failure		500	{object}	error
+//	@Param			limit	query		int		false	"limit"
+//	@Param			offset	query		int		false	"offset"
+//	@Param			sort	query		string	false	"sort"
+//	@Success		200		{object}	store.Cart
+//	@Failure		400		{object}	error
+//	@Failure		404		{object}	error
+//	@Failure		500		{object}	error
 //	@Router			/cart [get]
 func (app *application) getCartsHandler(w http.ResponseWriter, r *http.Request) {
 	fq := store.PaginatedFeedQuery{
-		Limit:  5,
-		Offset: 0,
-		Sort:   "desc",
-		Search: "",
+		Limit:    24,
+		Offset:   0,
+		Sort:     "desc",
+		Category: "",
+		Search:   "",
 	}
 
 	fq, err := fq.Parse(r)
@@ -57,7 +61,7 @@ func (app *application) getCartsHandler(w http.ResponseWriter, r *http.Request) 
 	user := getUserFromContext(r)
 
 	ctx := r.Context()
-	cart, err := app.store.Carts.GetCartByUserID(ctx, user.ID, fq)
+	cart, err := app.store.Carts.GetCartByUserIDPQ(ctx, user.ID, fq)
 	if err != nil {
 		switch {
 		case errors.Is(err, store.ErrNotFound):
@@ -182,7 +186,7 @@ func (app *application) AddingQuantityCartStoreItemHandler(w http.ResponseWriter
 	}
 	user := getUserFromContext(r)
 
-	cart := app.store.Carts.AddingQuantityCartStoreItemTransaction(r.Context(), cartStoreItemID, user.ID)
+	cart := app.store.Carts.IncreaseQuantityCartStoreItemTransaction(r.Context(), cartStoreItemID, user.ID)
 
 	if err := app.jsonResponse(w, http.StatusCreated, cart); err != nil {
 		app.internalServerError(w, r, err)
@@ -212,7 +216,7 @@ func (app *application) RemovingQuantityCartStoreItemHandler(w http.ResponseWrit
 	}
 	user := getUserFromContext(r)
 
-	cart := app.store.Carts.RemovingQuantityCartStoreItemTransaction(r.Context(), cartStoreItemID, user.ID)
+	cart := app.store.Carts.DecreaseQuantityCartStoreItemTransaction(r.Context(), cartStoreItemID, user.ID)
 
 	if err := app.jsonResponse(w, http.StatusCreated, cart); err != nil {
 		app.internalServerError(w, r, err)

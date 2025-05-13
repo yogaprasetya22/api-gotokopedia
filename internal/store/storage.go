@@ -67,15 +67,17 @@ type Storage struct {
 		GetByName(context.Context, string) (*Role, error)
 	}
 	Carts interface {
-		GetCartByUserID(ctx context.Context, userID int64, query PaginatedFeedQuery) (*Cart, error)
+		GetCartByUserID(ctx context.Context, userID int64) (*Cart, error) 
+		GetCartByUserIDPQ(ctx context.Context, userID int64, query PaginatedFeedQuery) (*MetaCart, error)
+		GetCartStoresByID(ctx context.Context, cartStoreID []uuid.UUID) ([]CartStores, error) 
 		AddToCartTransaction(ctx context.Context, userID, productID, quantity int64) (*Cart, error)
-		AddingQuantityCartStoreItemTransaction(ctx context.Context, cartStoreItemID uuid.UUID, userID int64) error
-		RemovingQuantityCartStoreItemTransaction(ctx context.Context, cartStoreItemID uuid.UUID, userID int64) error
+		IncreaseQuantityCartStoreItemTransaction(ctx context.Context, cartStoreItemID uuid.UUID, userID int64) error
+		DecreaseQuantityCartStoreItemTransaction(ctx context.Context, cartStoreItemID uuid.UUID, userID int64) error
 		GetDetailCartByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) (*CartDetailResponse, error)
-		UpdateItemQuantityByCartItemID(ctx context.Context, cartItemID uuid.UUID, quantity int64) error 
-		RemoveItemByCartItemID(ctx context.Context, cartItemID uuid.UUID) error 
-		ClearCartByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) error 
-		RemoveCartItemByID(ctx context.Context, cartItemID uuid.UUID) error 
+		UpdateItemQuantityByCartItemID(ctx context.Context, cartItemID uuid.UUID, quantity int64) error
+		RemoveItemByCartItemID(ctx context.Context, cartItemID uuid.UUID) error
+		ClearCartByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) error
+		RemoveCartItemByID(ctx context.Context, cartItemID uuid.UUID) error
 	}
 	Orders interface {
 		CreateFromCart(ctx context.Context, cartStoreID uuid.UUID, userID, paymentMethodID, shippingMethodID int64, shippingAddressesID uuid.UUID, notes string) error
@@ -83,7 +85,9 @@ type Storage struct {
 		GetByID(ctx context.Context, id int64) (*Order, error)
 		GetByUserID(ctx context.Context, userID int64, fq PaginatedFeedQuery) ([]*Order, error)
 		GetShippingMethods(ctx context.Context) ([]*ShippingMethod, error)
+		GetShippingMethodByID(ctx context.Context, id int64) (*ShippingMethod, error)
 		GetPaymentMethods(ctx context.Context) ([]*PaymentMethod, error)
+		GetPaymentMethodByID(ctx context.Context, id int64) (*PaymentMethod, error)
 	}
 	ShippingAddresses interface {
 		SetDefaultAddress(ctx context.Context, addressID uuid.UUID, userID int64) error
@@ -93,6 +97,9 @@ type Storage struct {
 		Create(context.Context, *ShippingAddresses) error
 		Update(context.Context, *ShippingAddresses) error
 		Delete(context.Context, uuid.UUID, int64) error
+	}
+	Checkout interface {
+		CreateOrderFromCheckout(ctx context.Context, checkout *CheckoutSession) error
 	}
 }
 
@@ -108,6 +115,7 @@ func NewStorage(db *sql.DB) Storage {
 		Carts:             &CartStore{db},
 		Orders:            &OrderStore{db},
 		ShippingAddresses: &ShippingAddresStore{db},
+		Checkout:          &CheckoutStore{db},
 	}
 }
 
