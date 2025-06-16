@@ -1,5 +1,5 @@
 -- Order status table
-CREATE TABLE
+CREATE TABLE IF NOT EXISTS
     order_status (
         id bigserial NOT NULL,
         name varchar(50) NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE
     );
 
 -- Shipping methods table
-CREATE TABLE
+CREATE TABLE IF NOT EXISTS
     shipping_methods (
         id bigserial NOT NULL,
         name varchar(100) NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE
     );
 
 -- Orders table
-CREATE TABLE
+CREATE TABLE IF NOT EXISTS
     orders (
         id bigserial NOT NULL,
         user_id bigserial NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE
 CREATE INDEX idx_orders_user_id ON orders USING btree (user_id);
 
 -- Order items table
-CREATE TABLE
+CREATE TABLE IF NOT EXISTS
     order_items (
         id bigserial NOT NULL,
         order_id bigserial NOT NULL,
@@ -69,7 +69,7 @@ CREATE INDEX idx_order_items_order_id ON order_items USING btree (order_id);
 CREATE INDEX idx_order_items_toko_id ON order_items USING btree (toko_id);
 
 -- Order tracking table
-CREATE TABLE
+CREATE TABLE IF NOT EXISTS
     order_tracking (
         id bigserial NOT NULL,
         order_id bigserial NOT NULL,
@@ -84,7 +84,7 @@ CREATE TABLE
 CREATE INDEX idx_order_tracking_order_id ON order_tracking USING btree (order_id);
 
 -- Initial data for order statuses
-INSERT INTO
+INSERT INTO 
     order_status (name, description)
 VALUES
     (

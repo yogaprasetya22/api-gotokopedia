@@ -336,8 +336,8 @@ var CasingData = `[
   },
   {
     "product_name": "Casing hp iPhone 6 6S 6+ 6S+ 7 7+ 8 8+ Plus SE(2020) Kartun Karakter - Gaya 1, iPhone 6",
-    "price": "Rp0",
-    "stock": "Habis",
+    "price": "Rp2.000",
+    "stock": "3",
     "description": "Selamat datang di toko kami ❤❤❤<br>Produk yang diperintahkan akan pabrik Indonesia dalam satu hari kerja, dan kami bergegas ke arahmu!<br><br>Kenapa kau memilih kami?<br>🤙KUALITAS TINGGI<br>Casing ponsel ini terbuat dari bahan softcase berkualitas tinggi serta, mudah dipasang &amp; dilepas, memberikan perlindungan terbaik untuk HP anda<br><br>🤙PENGIRIMAN LOKAL<br>Pengiriman langsung dari pabrik Indonesia untuk memastikan pengiriman barang yang cepat dan aman ke tangan Anda.<br><br>🤙LAYANAN YANG BAIK<br>Jika Anda memiliki pertanyaan tentang produk, layanan pelanggan akan meminta Anda online untuk layanan<br><br>Deskripsi Produk:<br>🤙💯Brand baru dan dapat dihapus.<br>🤙Desain wavy mode menjaga ponselmu pribadi dan merasa baik.<br>🤙Membebaskan pola yang sama hadiah pemilik kembali.<br>🤙Pemilik belakang mendukung lokasi telepon 360 derajat ketika digunakan.<br>🤙Penyerap kejutan, materi silikon lembut yang tak bisa hancur.<br>🤙Desain lensa unik untuk menghindari goresan kamera.<br>🤙Lubang kamera yang tebal menambah perlindungan terhadap titik kecelakaan.<br>🤙Bahkan jika ponselmu berada di kondisi ini, semua fungsi akan bekerja dengan baik.<br><br>Fitur:<br>Bahan: Dibuat dari TPU Kualitas Tinggi<br>Isi paket:<br>1 x Kasing",
     "image_url": [
       "https://images.tokopedia.net/img/cache/500-square/hDjmkQ/2023/4/28/30390fef-2f93-4b7e-a85b-279d03bce1ca.jpg.webp?ect=4g",
@@ -2028,8 +2028,8 @@ var CasingData = `[
   },
   {
     "product_name": "Ringke iPhone 16 / 16 Plus / 16 Pro / 16 Pro Max Fusion Bold / Fusion Card / Fusion Magnetic Case Softcase Tipis Magsafe Anti Crack Casing Hardcase Slim Armor Military Drop Tahan Banting Sarung Protector HP - 16P-Mag-Clr",
-    "price": "Rp0",
-    "stock": "Habis",
+    "price": "Rp2.000",
+    "stock": "3",
     "description": "Official Store Ringke<br>✅Official Store ✅100% Original ✅Ready Stock ✅Buka setiap hari ✅Fast Delivery ✅Best Service<br><br>Mohon Perhatikan Varian Sebelum Pembelian<br>Tidak Menerima Order di Chat / Notes<br>Salah Pesan Tidak Bisa Retur<br><br>Varian Model:<br>&gt; iPhone 16 Pro Max<br>&gt; iPhone 16 Pro<br>&gt; iPhone 16 Plus<br>&gt; iPhone 16<br><br>Varian Casing:<br>✔ Fusion Bold<br>Anti Yellowing<br><br>✔ Fusion<br>Classic Design, Made in Korea<br><br>✔ Fusion Magnetic<br>Built-in Neodymium Magnet<br><br>✔ Fusion Card<br>Ada tempat untuk menaruh kartu setebal 2.2mm<br>Kompatibel dengan Wireless Charging (meskipun ada kartu di dalamnya)<br><br>Fitur:<br>▪️ Material: Hybrid, pinggir Softcase, belakang Hardcase<br>▪️ Raised Bezel, melindungi Layar dan Kamera dari gesekan<br>▪️ Support Wireless Charging<br>▪️ Melindungi dari debu, kotor, goresan<br>▪️ Semua sisi terlindungi (Full Coverage Protection)<br>▪️ Tactile button, tombol lebih clicky dan enak di tekan<br>▪️ Nyaman di genggam<br>▪️ Slim, Fashionable dan Minimalis<br>▪️ Anti-Cling Dot Matriks, No Watermark atau Efek Pelangi<br>▪️ Potongan Akurat dan Tombol Presisi<br>▪️ Tersedia lubang khusus untuk lanyard maupun neck strap<br>▪️ Loop Hole Lebih besar, dap<br>at menampung 2 buckle sekaligus<br>▪️ Kompatibel dengan beragam jenis screen protector",
     "image_url": [
       "https://images.tokopedia.net/img/cache/500-square/hDjmkQ/2024/9/30/aa60d0ee-2485-4113-8873-8e376d3a96b0.jpg.webp?ect=4g",

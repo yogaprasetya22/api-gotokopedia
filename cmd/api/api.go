@@ -13,7 +13,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/gorilla/sessions"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"github.com/yogaprasetya22/api-gotokopedia/docs"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/auth"
@@ -35,7 +34,6 @@ type application struct {
 	authenticator     auth.Authenticator
 	rateLimiter       ratelimiter.Limiter
 	googleOauthConfig *oauth2.Config
-	session           sessions.Store
 }
 
 type config struct {
@@ -152,6 +150,23 @@ func (app *application) mount() *chi.Mux {
 			})
 		})
 
+		/// product feed
+		r.Route("/catalogue", func(r chi.Router) {
+			r.Get("/", app.getProductCategoryFeed)
+
+			r.Route("/{slug_toko}", func(r chi.Router) {
+				r.Get("/", app.getTokoHandler)
+
+				r.Route("/{slug_product}", func(r chi.Router) {
+					r.Get("/", app.getProductHandler)
+				})
+			})
+
+			r.Group(func(r chi.Router) {
+				r.Get("/feed", app.getProductFeedHandler)
+			})
+		})
+
 		/// product
 		r.Route("/product", func(r chi.Router) {
 			r.Post("/", app.createProductHandler)
@@ -194,37 +209,21 @@ func (app *application) mount() *chi.Mux {
 
 				r.Patch("/increase", app.AddingQuantityCartStoreItemHandler)
 				r.Patch("/decrease", app.RemovingQuantityCartStoreItemHandler)
+				r.Delete("/delete", app.DeleteByCartStoreItemHandler)
 
 				// r.Patch("/", app.updateCartHandler)
 				// r.Delete("/", app.deleteCartItemHandler) // Delete a specific item in the cart
 			})
 		})
 
-		// order
+		/// order
 		r.Route("/order", func(r chi.Router) {
 			r.Use(app.AuthTokenMiddleware)
 
 			r.Get("/", app.listOrdersHandler)
 			r.Get("/{id}", app.getOrderHandler)
-			r.Post("/", app.createOrderHandler)
 			// r.Patch("/{id}", app.updateOrderHandler)
 			// r.Delete("/{id}", app.deleteOrderHandler)
-		})
-
-		r.Route("/catalogue", func(r chi.Router) {
-			r.Get("/", app.getProductCategoryFeed)
-
-			r.Route("/{slug_toko}", func(r chi.Router) {
-				r.Get("/", app.getTokoHandler)
-
-				r.Route("/{slug_product}", func(r chi.Router) {
-					r.Get("/", app.getProductHandler)
-				})
-			})
-
-			r.Group(func(r chi.Router) {
-				r.Get("/feed", app.getProductFeedHandler)
-			})
 		})
 
 		/// shipping addresses
@@ -232,13 +231,34 @@ func (app *application) mount() *chi.Mux {
 			r.Use(app.AuthTokenMiddleware)
 
 			r.Get("/", app.getShippingAddressHandler)
+			r.Get("/default", app.getDefaultShippingAddressHandler)
+			r.Post("/", app.createShippingAddressHandler)
 		})
 
 		r.Route("/checkout", func(r chi.Router) {
 			r.Use(app.AuthTokenMiddleware)
-			
+
 			r.Post("/start", app.startCheckoutHandler)
+			r.Get("/{session_id}", app.getCheckoutBySessionHandler)
 			r.Post("/complete", app.completeCheckoutHandler)
+		})
+
+		/// shipping methods
+		r.Route("/shipping-methods", func(r chi.Router) {
+			r.Get("/", app.listShippingMethodsHandler)
+			r.Post("/", app.createShippingMethodHandler)
+			r.Get("/{id}", app.getShippingMethodHandler)
+			r.Put("/{id}", app.updateShippingMethodHandler)
+			r.Delete("/{id}", app.deleteShippingMethodHandler)
+		})
+
+		/// payment methods
+		r.Route("/payment-methods", func(r chi.Router) {
+			r.Get("/", app.listPaymentMethodsHandler)
+			r.Post("/", app.createPaymentMethodHandler)
+			r.Get("/{id}", app.getPaymentMethodHandler)
+			r.Put("/{id}", app.updatePaymentMethodHandler)
+			r.Delete("/{id}", app.deletePaymentMethodHandler)
 		})
 
 		/// user

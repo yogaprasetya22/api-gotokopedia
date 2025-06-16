@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store/cache"
 )
 
@@ -20,51 +21,42 @@ func TestGetUser(t *testing.T) {
 	app := newTestApplication(t, withRedis)
 	mux := app.mount()
 
+	// Generate token JWT yang valid
 	testToken, err := app.authenticator.GenerateToken(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	t.Run("seharusnya tidak mengizinkan permintaan yang tidak otentikasi", func(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/api/v1/users/4", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
-		rr := executeRequest(req, mux)
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
 
 		log.Printf("token: %s", testToken)
-		checkResponseCode(t, http.StatusUnauthorized, rr.Code)
+		require.Equal(t, http.StatusUnauthorized, rr.Code)
 	})
 
 	t.Run("harus mengizinkan permintaan yang diautentikasi", func(t *testing.T) {
 		mockCacheStore := app.cacheStorage.Users.(*cache.MockUserStore)
 
+		// Mock cache get dan set sesuai ekspektasi
 		mockCacheStore.On("Get", int64(4)).Return(nil, nil).Twice()
 		mockCacheStore.On("Set", mock.Anything).Return(nil)
 
 		// Buat request
 		req, err := http.NewRequest(http.MethodGet, "/api/v1/users/4", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
-		// Tambahkan session dengan token sebelum eksekusi
-		session, _ := app.session.Get(req, "auth_token")
-		session.Values["auth_token"] = testToken
-
-		// Simpan session ke request context
-		req = addSessionToRequestContext(req, session)
+		// Tambahkan cookie JWT untuk autentikasi
+		addJWTToRequest(req, testToken)
 
 		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
 
-		if err := session.Save(req, rr); err != nil {
-			t.Fatal(err)
-		}
+		require.Equal(t, http.StatusOK, rr.Code)
 
-		checkResponseCode(t, http.StatusOK, rr.Code)
-
-		mockCacheStore.Calls = nil // Reset mock expectations
+		// Reset mock
+		mockCacheStore.Calls = nil
 	})
 
 	t.Run("harus menekan cache terlebih dahulu dan jika tidak ada, itu mengatur pengguna pada cache", func(t *testing.T) {
@@ -75,61 +67,46 @@ func TestGetUser(t *testing.T) {
 		mockCacheStore.On("Set", mock.Anything, mock.Anything).Return(nil)
 
 		req, err := http.NewRequest(http.MethodGet, "/api/v1/users/10", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
-		session, _ := app.session.Get(req, "auth_token")
-		session.Values["auth_token"] = testToken
+		// Tambahkan cookie JWT ke request
+		addJWTToRequest(req, testToken)
 
-		// Simpan session ke request context
-		req = addSessionToRequestContext(req, session)
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
 
-		rr := executeRequest(req, mux)
-
-		if err := session.Save(req, rr); err != nil {
-			t.Fatal(err)
-		}
-
-		checkResponseCode(t, http.StatusOK, rr.Code)
+		require.Equal(t, http.StatusOK, rr.Code)
 
 		mockCacheStore.AssertNumberOfCalls(t, "Get", 2)
 
-		mockCacheStore.Calls = nil // Reset mock expectations
+		mockCacheStore.Calls = nil
 	})
 
 	t.Run("tidak boleh menekan cache jika tidak diaktifkan", func(t *testing.T) {
-		withRedis := config{
+		withRedisDisabled := config{
 			redisCfg: redisConfig{
 				enabled: false,
 			},
 		}
 
-		app := newTestApplication(t, withRedis)
+		appWithoutRedis := newTestApplication(t, withRedisDisabled)
+		muxWithoutRedis := appWithoutRedis.mount()
 
-		mockCacheStore := app.cacheStorage.Users.(*cache.MockUserStore)
+		mockCacheStore := appWithoutRedis.cacheStorage.Users.(*cache.MockUserStore)
 
 		req, err := http.NewRequest(http.MethodGet, "/api/v1/users/4", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
-		session, _ := app.session.Get(req, "auth_token")
-		session.Values["auth_token"] = testToken
-
-		// Simpan session ke request context
-		req = addSessionToRequestContext(req, session)
+		addJWTToRequest(req, testToken)
 
 		rr := httptest.NewRecorder()
+		muxWithoutRedis.ServeHTTP(rr, req)
 
-		if err := session.Save(req, rr); err != nil {
-			t.Fatal(err)
-		}
+		require.Equal(t, http.StatusOK, rr.Code)
 
-		checkResponseCode(t, http.StatusOK, rr.Code)
-
+		// Pastikan cache tidak dipanggil karena redis nonaktif
 		mockCacheStore.AssertNotCalled(t, "Get")
 
-		mockCacheStore.Calls = nil // Reset mock expectations
+		mockCacheStore.Calls = nil
 	})
 }

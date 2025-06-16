@@ -4,15 +4,26 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
 
+type StockError struct {
+	ProductID int64
+}
+
+func (e StockError) Error() string {
+	return fmt.Sprintf("insufficient stock for product %d", e.ProductID)
+}
+
 var (
 	ErrAvtivated         = errors.New("akun belum diaktivasi")
 	ErrNotFound          = errors.New("sumber daya tidak ditemukan")
 	ErrConflict          = errors.New("sumber daya sudah ada")
+	ErrSessionNotFound   = errors.New("session tidak ditemukan")
+	ErrSessionExpired    = errors.New("session sudah kadaluarsa")
 	QueryTimeoutDuration = time.Second * 5
 )
 
@@ -67,16 +78,16 @@ type Storage struct {
 		GetByName(context.Context, string) (*Role, error)
 	}
 	Carts interface {
-		GetCartByUserID(ctx context.Context, userID int64) (*Cart, error) 
+		GetCartByUserID(ctx context.Context, userID int64) (*Cart, error)
 		GetCartByUserIDPQ(ctx context.Context, userID int64, query PaginatedFeedQuery) (*MetaCart, error)
-		GetCartStoresByID(ctx context.Context, cartStoreID []uuid.UUID) ([]CartStores, error) 
+		GetCartStoresByID(ctx context.Context, cartStoreID []uuid.UUID) ([]CartStores, error)
 		AddToCartTransaction(ctx context.Context, userID, productID, quantity int64) (*Cart, error)
 		IncreaseQuantityCartStoreItemTransaction(ctx context.Context, cartStoreItemID uuid.UUID, userID int64) error
 		DecreaseQuantityCartStoreItemTransaction(ctx context.Context, cartStoreItemID uuid.UUID, userID int64) error
 		GetDetailCartByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) (*CartDetailResponse, error)
 		UpdateItemQuantityByCartItemID(ctx context.Context, cartItemID uuid.UUID, quantity int64) error
 		RemoveItemByCartItemID(ctx context.Context, cartItemID uuid.UUID) error
-		ClearCartByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) error
+		DeleteByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) error
 		RemoveCartItemByID(ctx context.Context, cartItemID uuid.UUID) error
 	}
 	Orders interface {
@@ -101,6 +112,20 @@ type Storage struct {
 	Checkout interface {
 		CreateOrderFromCheckout(ctx context.Context, checkout *CheckoutSession) error
 	}
+	PaymentMethods interface {
+		GetAll(context.Context) ([]*PaymentMethod, error)
+		GetByID(context.Context, int64) (*PaymentMethod, error)
+		Create(context.Context, *PaymentMethod) error
+		Update(context.Context, *PaymentMethod) error
+		Delete(context.Context, int64) error
+	}
+	ShippingMethods interface {
+		GetAll(context.Context) ([]*ShippingMethod, error)
+		GetByID(context.Context, int64) (*ShippingMethod, error)
+		Create(context.Context, *ShippingMethod) error
+		Update(context.Context, *ShippingMethod) error
+		Delete(context.Context, int64) error
+	}
 }
 
 func NewStorage(db *sql.DB) Storage {
@@ -116,6 +141,8 @@ func NewStorage(db *sql.DB) Storage {
 		Orders:            &OrderStore{db},
 		ShippingAddresses: &ShippingAddresStore{db},
 		Checkout:          &CheckoutStore{db},
+		PaymentMethods:    &PaymentMethodStore{db},
+		ShippingMethods:   &ShippingMethodStore{db},
 	}
 }
 

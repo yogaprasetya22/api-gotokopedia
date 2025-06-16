@@ -136,7 +136,6 @@ type CreateUserTokenPayload struct {
 //	@Failure		500		{object}	error
 //	@Router			/authentication/token [get]
 func (app *application) createTokenHandler(w http.ResponseWriter, r *http.Request) {
-	session, _ := app.session.Get(r, "auth_token")
 	email := r.URL.Query().Get("email")
 	password := r.URL.Query().Get("password")
 
@@ -190,11 +189,21 @@ func (app *application) createTokenHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	// set token in cookie
-	session.Values["auth_token"] = token
-	if err := session.Save(r, w); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
+	// session.Values["auth_token"] = token
+	// if err := session.Save(r, w); err != nil {
+	// 	app.internalServerError(w, r, err)
+	// 	return
+	// }
+
+	// Set token as HTTPOnly cookie (optional)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   app.config.env == "production",
+		Expires:  time.Now().Add(app.config.auth.token.exp),
+	})
 
 	if err := app.jsonResponse(w, http.StatusCreated, map[string]string{"message": "token created and set in cookie"}); err != nil {
 		app.internalServerError(w, r, err)
@@ -211,15 +220,18 @@ func (app *application) createTokenHandler(w http.ResponseWriter, r *http.Reques
 //	@Failure		500	{object}	error
 //	@Router			/authentication/logout [get]
 func (app *application) logoutHandler(w http.ResponseWriter, r *http.Request) {
-	// set token in cookie
-	session, _ := app.session.Get(r, "auth_token")
-	session.Values["auth_token"] = ""
-	if err := session.Save(r, w); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
+	// Hapus token dengan overwrite cookie dan expired
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true, // sesuaikan: false jika development tanpa https
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1, // <- ini penting untuk menghapus cookie
+	})
 
-	if err := app.jsonResponse(w, http.StatusCreated, map[string]string{"message": "token created and set in cookie"}); err != nil {
+	if err := app.jsonResponse(w, http.StatusOK, map[string]string{"message": "logout success"}); err != nil {
 		app.internalServerError(w, r, err)
 	}
 }

@@ -11,7 +11,7 @@ import (
 )
 
 // Struct untuk request membuat order
-type createOrderRequest struct {
+type CreateOrderRequest struct {
 	CartID              uuid.UUID `json:"cart_id"`
 	PaymentMethodID     int64     `json:"payment_method_id"`
 	ShippingMethodID    int64     `json:"shipping_method_id"`
@@ -25,44 +25,22 @@ type updateOrderStatusRequest struct {
 	Notes    string `json:"notes,omitempty"`
 }
 
-// Handler untuk membuat order dari cart
-func (app *application) createOrderHandler(w http.ResponseWriter, r *http.Request) {
-	var payload createOrderRequest
 
-	err := readJSON(w, r, &payload)
-	if err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
-
-	err = Validate.Struct(payload)
-	if err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-
-	user := getUserFromContext(r)
-
-	err = app.store.Orders.CreateFromCart(r.Context(), payload.CartID, user.ID, payload.PaymentMethodID, payload.ShippingMethodID, payload.ShippingAddressesID, payload.Notes)
-	if err != nil {
-		switch {
-		case errors.Is(err, store.ErrNotFound):
-			app.notFoundResponse(w, r, err)
-		case errors.Is(err, store.ErrConflict):
-			app.conflictResponse(w, r, err)
-		default:
-			app.internalServerError(w, r, err)
-		}
-		return
-	}
-
-	if err := app.jsonResponse(w, http.StatusCreated, map[string]any{"status": "order created"}); err != nil {
-		app.internalServerError(w, r, err)
-		return
-	}
-}
-
-// Handler untuk mengambil detail order
+// getOrderHandler godoc
+//
+//	@Summary		Get order by ID
+//	@Description	Get order details by ID
+//	@Tags			order
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"Order ID"
+//	@Success		200	{object}	store.Order
+//	@Failure		400	{object}	error
+//	@Failure		404	{object}	error
+//	@Failure		403	{object}	error
+//	@Failure		500	{object}	error
+//	@Router			/order/{id} [get]
+//	@Security		ApiKeyAuth
 func (app *application) getOrderHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
@@ -96,7 +74,23 @@ func (app *application) getOrderHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-// Handler untuk mengambil daftar order pengguna
+// listOrdersHandler godoc
+//
+//	@Summary		List orders for authenticated user
+//	@Description	List orders with pagination and sorting
+//	@Tags			order
+//	@Accept			json
+//	@Produce		json
+//	@Param			limit	query		int		false	"Number of orders to return (default 5)"
+//	@Param			offset	query		int		false	"Offset for pagination (default 0)"
+//	@Param			sort	query		string	false	"Sort order (asc or desc, default desc)"
+//	@Param			search	query		string	false	"Search term for order details"
+//	@Success		200		{object}	[]store.Order
+//	@Failure		400		{object}	error
+//	@Failure		404		{object}	error
+//	@Failure		500		{object}	error
+//	@Router			/order [get]
+//	@Security		ApiKeyAuth
 func (app *application) listOrdersHandler(w http.ResponseWriter, r *http.Request) {
 	fq := store.PaginatedFeedQuery{
 		Limit:  5,

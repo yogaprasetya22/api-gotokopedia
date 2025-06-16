@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	checkoutExpTime = 24 * time.Hour
-	lockExpTime     = 24 * time.Hour
+	checkoutExpTime = 60 * time.Minute
+	lockExpTime     = 60 * time.Minute
 )
 
 type Storage struct {

@@ -14,20 +14,28 @@ import (
 
 func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session, err := app.session.Get(r, "auth_token")
-		app.logger.Debug("session", session)
-		if err != nil || session.Values["auth_token"] == nil {
-			app.unauthorizedErrorResponse(w, r, fmt.Errorf("auth token not found"))
+		// session, err := app.session.Get(r, "auth_token")
+		// app.logger.Debug("session", session)
+		// if err != nil || session.Values["auth_token"] == nil {
+		// 	app.unauthorizedErrorResponse(w, r, fmt.Errorf("auth token not found"))
+		// 	return
+		// }
+
+		// token, ok := session.Values["auth_token"].(string)
+		// if !ok {
+		// 	app.unauthorizedErrorResponse(w, r, fmt.Errorf("invalid auth token"))
+		// 	return
+		// }
+
+		cookie, err := r.Cookie("auth_token")
+		if err != nil {
+			app.unauthorizedErrorResponse(w, r, fmt.Errorf("auth token not found in cookies"))
 			return
 		}
 
-		token, ok := session.Values["auth_token"].(string)
-		if !ok {
-			app.unauthorizedErrorResponse(w, r, fmt.Errorf("invalid auth token"))
-			return
-		}
+		tokenString := cookie.Value
 
-		jwtToken, err := app.authenticator.ValidateToken(token)
+		jwtToken, err := app.authenticator.ValidateToken(tokenString)
 		if err != nil {
 			app.unauthorizedErrorResponse(w, r, err)
 			return

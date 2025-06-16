@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -79,6 +80,9 @@ func (s *ShippingAddresStore) GetDefaultAddress(ctx context.Context, userID int6
 		&noteForCourier,
 		&sa.IsDefault, &sa.CreatedAt, &sa.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound // <--- ini kunci pentingnya
+		}
 		return nil, err
 	}
 	if noteForCourier.Valid {

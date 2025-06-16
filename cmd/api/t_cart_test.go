@@ -1,113 +1,102 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store/cache"
+	// import lain sesuai project kamu, misal app, store, cache, dll
 )
 
-func TestGetCart(t *testing.T) {
-	withRedis := config{
+func TestCartAndLogout(t *testing.T) {
+	app := newTestApplication(t, config{
 		redisCfg: redisConfig{
 			enabled: true,
 		},
-	}
+	})
 
-	app := newTestApplication(t, withRedis)
 	mux := app.mount()
 
-	// Setup mock cache user store
-	mockCacheStore := app.cacheStorage.Users.(*cache.MockUserStore)
-	mockCacheStore.On("Get", int64(10)).Return(nil, nil)
-	mockCacheStore.On("Set", mock.Anything).Return(nil)
-	mockCacheStore.On("Delete", mock.Anything).Return()
+	// Mock cache user store
+	mockCacheUser := app.cacheStorage.Users.(*cache.MockUserStore)
+	mockCacheUser.On("Get", int64(10)).Return(nil, nil)
+	mockCacheUser.On("Set", mock.Anything).Return(nil)
+	mockCacheUser.On("Delete", mock.Anything).Return()
 
-	// Setup mock store cart jika diperlukan
+	// Mock cart store
 	mockCart := &store.Cart{ID: 1, UserID: 10}
 	app.store.Carts = &store.MockCartStore{}
 	app.store.Carts.(*store.MockCartStore).On("AddToCartTransaction", mock.Anything, int64(10), int64(258), int64(1)).Return(mockCart, nil)
 
+	// Generate valid JWT token
 	testToken, err := app.authenticator.GenerateToken(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	t.Run("seharusnya tidak mengizinkan permintaan yang tidak otentikasi", func(t *testing.T) {
+	// Test 1: request GET /api/v1/cart tanpa token harus 401
+	t.Run("Unauthorized GET /api/v1/cart without token", func(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/api/v1/cart", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		rr := executeRequest(req, mux)
-
-		log.Printf("token: %s", testToken)
-		checkResponseCode(t, http.StatusUnauthorized, rr.Code)
-	})
-
-	t.Run("harus mengizinkan permintaan yang diautentikasi", func(t *testing.T) {
-		mockCacheStore := app.cacheStorage.Carts.(*cache.MockCartStore)
-
-		mockCacheStore.On("Get", int64(5)).Return(nil, nil).Twice()
-		mockCacheStore.On("Set", mock.Anything).Return(nil)
-
-		// Buat request
-		req, err := http.NewRequest(http.MethodGet, "/api/v1/cart", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// Tambahkan session dengan token sebelum eksekusi
-		session, _ := app.session.Get(req, "auth_token")
-		session.Values["auth_token"] = testToken
-
-		// Simpan session ke request context
-		req = addSessionToRequestContext(req, session)
+		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
-
-		if err := session.Save(req, rr); err != nil {
-			t.Fatal(err)
-		}
-
-		checkResponseCode(t, http.StatusOK, rr.Code)
-
-		mockCacheStore.Calls = nil // Reset mock expectations
-	})
-
-	t.Run("membuat cart baru", func(t *testing.T) {
-		bodycart := strings.NewReader(`{"product_id":` + strconv.Itoa(258) + `,"quantity":` + strconv.Itoa(1) + `}`)
-		req, err := http.NewRequest(http.MethodPost, "/api/v1/cart", bodycart)
-		if err != nil {
-			t.Fatalf("error creating request: %v", err)
-		}
-
-		session, _ := app.session.Get(req, "auth_token")
-		session.Values["auth_token"] = testToken
-
-		// Simpan session ke request context
-		req = addSessionToRequestContext(req, session)
-
-		rr := executeRequest(req, mux)
-
-		if err := session.Save(req, rr); err != nil {
-			t.Fatal(err)
-		}
-
-		fmt.Printf("session: %v\n", session.Values["auth_token"])
-
-		// Panggil handler setelah semua setup selesai
-		app.createCartHandler(rr, req)
-
 		mux.ServeHTTP(rr, req)
 
-		checkResponseCode(t, http.StatusCreated, rr.Code)
+		require.Equal(t, http.StatusUnauthorized, rr.Code)
+	})
+
+	// Test 2: request GET /api/v1/cart dengan token harus berhasil
+	t.Run("Authorized GET /api/v1/cart with token", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/api/v1/cart", nil)
+		require.NoError(t, err)
+
+		addJWTToRequest(req, testToken)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+	})
+
+	// Test 3: POST /api/v1/cart dengan token harus berhasil buat cart baru
+	t.Run("Authorized POST /api/v1/cart create cart", func(t *testing.T) {
+		body := strings.NewReader(`{"product_id":258,"quantity":1}`)
+		req, err := http.NewRequest(http.MethodPost, "/api/v1/cart", body)
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		addJWTToRequest(req, testToken)
+
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+
+		require.Equal(t, http.StatusCreated, rr.Code)
+	})
+
+	// Test 4: Logout harus hapus cookie auth_token
+	t.Run("Logout clears auth_token cookie", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodPost, "/logout", nil)
+		require.NoError(t, err)
+
+		addJWTToRequest(req, testToken)
+
+		rr := httptest.NewRecorder()
+		app.logoutHandler(rr, req)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+
+		cookies := rr.Result().Cookies()
+		found := false
+		for _, c := range cookies {
+			if c.Name == "auth_token" {
+				found = true
+				// MaxAge -1 artinya cookie dihapus di browser
+				require.Equal(t, -1, c.MaxAge)
+			}
+		}
+		require.True(t, found, "auth_token cookie must be cleared on logout")
 	})
 }

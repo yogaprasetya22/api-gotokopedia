@@ -7,16 +7,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION public.create_order_from_cart(
-    p_user_id bigint,
-    p_cart_store_id uuid,
-    p_payment_method_id bigint,
-    p_shipping_method_id bigint,
-    p_shipping_addresses_id uuid,
-    p_notes text DEFAULT NULL::text
-)
-RETURNS bigint
-LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION public.create_order_from_cart(p_user_id bigint, p_cart_store_id uuid, p_payment_method_id bigint, p_shipping_method_id bigint, p_shipping_addresses_id uuid, p_notes text DEFAULT NULL::text)
+ RETURNS bigint
+ LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_order_id bigint;
@@ -126,7 +119,8 @@ BEGIN
     
     RETURN v_order_id;
 END;
-$function$;
+$function$
+;
 
 
 -- Function to update order status

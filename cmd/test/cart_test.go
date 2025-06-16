@@ -103,7 +103,7 @@ func TestCartHandler(t *testing.T) {
 						require.NoError(t, err)
 						require.NotNil(t, cart)
 
-						err = storeTest.Carts.ClearCartByCartStoreID(ctx, cartStoreItemID, userID)
+						err = storeTest.Carts.DeleteByCartStoreID(ctx, cartStoreItemID, userID)
 						require.NoError(t, err)
 					}
 				})

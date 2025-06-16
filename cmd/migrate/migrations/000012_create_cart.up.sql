@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE
-    carts (
+    IF NOT EXISTS carts (
         id bigserial NOT NULL,
         user_id bigserial NOT NULL,
         created_at timestamptz (0) DEFAULT now () NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE
 CREATE INDEX idx_cart_user_id ON carts USING btree (user_id);
 
 CREATE TABLE
-    cart_stores (
+    IF NOT EXISTS cart_stores (
         id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         cart_id bigint NOT NULL,
         toko_id bigint NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE
 CREATE INDEX idx_cart_stores_cart_toko ON cart_stores USING btree (cart_id, toko_id);
 
 CREATE TABLE
-    cart_items (
+    IF NOT EXISTS cart_items (
         id uuid DEFAULT uuid_generate_v4 () NOT NULL,
         cart_id bigserial NOT NULL,
         cart_store_id uuid NOT NULL,

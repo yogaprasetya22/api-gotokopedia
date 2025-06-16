@@ -46,8 +46,15 @@ func newTestApplication(t *testing.T, cfg config) *application {
 		authenticator: testAuth,
 		config:        cfg,
 		rateLimiter:   rateLimiter,
-		session:       mockSessionStore, // Tambahkan session di sini
 	}
+}
+
+func addJWTToRequest(req *http.Request, token string) {
+	req.AddCookie(&http.Cookie{
+		Name:  "auth_token",
+		Value: token,
+		Path:  "/",
+	})
 }
 
 func executeRequest(req *http.Request, mux http.Handler) *httptest.ResponseRecorder {
@@ -64,7 +71,7 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 }
 
 func addSessionToRequestContext(r *http.Request, session *sessions.Session) *http.Request {
-    ctx := r.Context()
-    ctx = context.WithValue(ctx, "session", session)
-    return r.WithContext(ctx)
+	ctx := r.Context()
+	ctx = context.WithValue(ctx, "session", session)
+	return r.WithContext(ctx)
 }

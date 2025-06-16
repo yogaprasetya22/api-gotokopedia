@@ -96,7 +96,7 @@ func (m *MockCartStore) RemoveItemByCartItemID(ctx context.Context, cartItemID u
 	return nil
 }
 
-func (m *MockCartStore) ClearCartByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) error {
+func (m *MockCartStore) DeleteByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) error {
 	return nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/yogaprasetya22/api-gotokopedia/internal/store"
@@ -41,6 +42,55 @@ func (p *StartCheckoutPayload) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
+}
+
+// GetCheckoutBySession godoc
+//
+//	@Summary		Get checkout session details
+//	@Description	Get detailed information about a checkout session
+//	@Tags			checkout
+//	@Accept			json
+//	@Produce		json
+//	@Param			session_id	path		string	true	"Checkout Session ID"
+//	@Success		200			{object}	store.CheckoutSession
+//	@Failure		400			{object}	error
+//	@Failure		401			{object}	error
+//	@Failure		404			{object}	error
+//	@Failure		500			{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/checkout/{session_id} [get]
+func (app *application) getCheckoutBySessionHandler(w http.ResponseWriter, r *http.Request) {
+	user := getUserFromContext(r)
+
+	// Ambil sessionID dari path parameter
+	sessionID := chi.URLParam(r, "session_id")
+	if sessionID == "" {
+		app.badRequestResponse(w, r, errors.New("session_id is required"))
+		return
+	}
+
+	// Dapatkan session dari Redis
+	checkoutSession, err := app.cacheStorage.Checkout.GetCheckoutSession(r.Context(), sessionID)
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			app.notFoundResponse(w, r, err)
+		default:
+			app.internalServerError(w, r, err)
+		}
+		return
+	}
+
+	// Verifikasi session milik user yang benar
+	if checkoutSession.UserID != user.ID {
+		app.unauthorizedErrorResponse(w, r, errors.New("unauthorized to access this session"))
+		return
+	}
+
+	// Response dengan data session
+	if err := app.jsonResponse(w, http.StatusOK, checkoutSession); err != nil {
+		app.internalServerError(w, r, err)
+	}
 }
 
 // StartCheckout godoc
@@ -90,8 +140,7 @@ func (app *application) startCheckoutHandler(w http.ResponseWriter, r *http.Requ
 	// Mulai checkout session di Redis
 	checkoutSession, err := app.cacheStorage.Checkout.StartCheckoutSession(r.Context(), user.ID, cartStore)
 	if err != nil {
-		app.internalServerError(w, r, err)
-		return
+		app.badRequestResponse(w, r, fmt.Errorf("failed to start checkout: %w", err))
 	}
 
 	if err := app.jsonResponse(w, http.StatusOK, checkoutSession); err != nil {
@@ -185,3 +234,5 @@ func (app *application) completeCheckoutHandler(w http.ResponseWriter, r *http.R
 		app.internalServerError(w, r, err)
 	}
 }
+
+

@@ -205,6 +205,19 @@ definitions:
       version:
         type: integer
     type: object
+  main.shippingAddressRequest:
+    properties:
+      address_line1:
+        type: string
+      label:
+        type: string
+      note_for_courier:
+        type: string
+      recipient_name:
+        type: string
+      recipient_phone:
+        type: string
+    type: object
   store.Cart:
     properties:
       created_at:
@@ -283,6 +296,10 @@ definitions:
         type: string
       expires_at:
         type: string
+      id:
+        type: string
+      notes:
+        type: string
       payment_method:
         $ref: '#/definitions/store.PaymentMethod'
       session_id:
@@ -291,6 +308,8 @@ definitions:
         $ref: '#/definitions/store.ShippingAddresses'
       shipping_method:
         $ref: '#/definitions/store.ShippingMethod'
+      total_price:
+        type: number
       user_id:
         type: integer
     type: object
@@ -798,6 +817,36 @@ paths:
       summary: remove quantity to cart store item
       tags:
       - cart
+  /cart/item/{cartStoreItemID}/delete:
+    delete:
+      consumes:
+      - application/json
+      description: delete cart store item by ID
+      parameters:
+      - description: cart store item ID
+        in: path
+        name: cartStoreItemID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: delete cart store item
+      tags:
+      - cart
   /cart/item/{cartStoreItemID}/increase:
     patch:
       consumes:
@@ -1031,6 +1080,41 @@ paths:
       summary: create category
       tags:
       - category
+  /checkout/{session_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a checkout session
+      parameters:
+      - description: Checkout Session ID
+        in: path
+        name: session_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.CheckoutSession'
+        "400":
+          description: Bad Request
+          schema: {}
+        "401":
+          description: Unauthorized
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Get checkout session details
+      tags:
+      - checkout
   /checkout/complete:
     post:
       consumes:
@@ -1149,6 +1233,222 @@ paths:
       summary: Healthcheck
       tags:
       - ops
+  /order:
+    get:
+      consumes:
+      - application/json
+      description: List orders with pagination and sorting
+      parameters:
+      - description: Number of orders to return (default 5)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset for pagination (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: Sort order (asc or desc, default desc)
+        in: query
+        name: sort
+        type: string
+      - description: Search term for order details
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/store.Order'
+            type: array
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: List orders for authenticated user
+      tags:
+      - order
+  /order/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get order details by ID
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.Order'
+        "400":
+          description: Bad Request
+          schema: {}
+        "403":
+          description: Forbidden
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Get order by ID
+      tags:
+      - order
+  /payment-methods:
+    get:
+      consumes:
+      - application/json
+      description: Get all available payment methods
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/store.PaymentMethod'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: List payment methods
+      tags:
+      - payment-method
+    post:
+      consumes:
+      - application/json
+      description: Create a new payment method
+      parameters:
+      - description: Payment Method
+        in: body
+        name: payment_method
+        required: true
+        schema:
+          $ref: '#/definitions/store.PaymentMethod'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.PaymentMethod'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Create payment method
+      tags:
+      - payment-method
+  /payment-methods/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a payment method by ID
+      parameters:
+      - description: Payment Method ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Delete payment method
+      tags:
+      - payment-method
+    get:
+      consumes:
+      - application/json
+      description: Get payment method by ID
+      parameters:
+      - description: Payment Method ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.PaymentMethod'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Get payment method
+      tags:
+      - payment-method
+    put:
+      consumes:
+      - application/json
+      description: Update an existing payment method
+      parameters:
+      - description: Payment Method ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Payment Method
+        in: body
+        name: payment_method
+        required: true
+        schema:
+          $ref: '#/definitions/store.PaymentMethod'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.PaymentMethod'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Update payment method
+      tags:
+      - payment-method
   /product:
     post:
       consumes:
@@ -1375,6 +1675,61 @@ paths:
     get:
       consumes:
       - application/json
+      description: Get shipping address by userID
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.ShippingAddresses'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Get shipping address
+      tags:
+      - shipping-address
+    post:
+      consumes:
+      - application/json
+      description: Create a new shipping address
+      parameters:
+      - description: Shipping Address
+        in: body
+        name: shipping_address
+        required: true
+        schema:
+          $ref: '#/definitions/main.shippingAddressRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.ShippingAddresses'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Create shipping address
+      tags:
+      - shipping-address
+  /shipping-addresses/default:
+    get:
+      consumes:
+      - application/json
       description: Get the default shipping address for the authenticated user
       produces:
       - application/json
@@ -1395,6 +1750,142 @@ paths:
       summary: Get default shipping address
       tags:
       - shipping-address
+  /shipping-methods:
+    get:
+      consumes:
+      - application/json
+      description: Get all available shipping methods
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/store.ShippingMethod'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: List shipping methods
+      tags:
+      - shipping-method
+    post:
+      consumes:
+      - application/json
+      description: Create a new shipping method
+      parameters:
+      - description: Shipping Method
+        in: body
+        name: shipping_method
+        required: true
+        schema:
+          $ref: '#/definitions/store.ShippingMethod'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/store.ShippingMethod'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Create shipping method
+      tags:
+      - shipping-method
+  /shipping-methods/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a shipping method by ID
+      parameters:
+      - description: Shipping Method ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Delete shipping method
+      tags:
+      - shipping-method
+    get:
+      consumes:
+      - application/json
+      description: Get shipping method by ID
+      parameters:
+      - description: Shipping Method ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.ShippingMethod'
+        "400":
+          description: Bad Request
+          schema: {}
+        "404":
+          description: Not Found
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Get shipping method
+      tags:
+      - shipping-method
+    put:
+      consumes:
+      - application/json
+      description: Update an existing shipping method
+      parameters:
+      - description: Shipping Method ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Shipping Method
+        in: body
+        name: shipping_method
+        required: true
+        schema:
+          $ref: '#/definitions/store.ShippingMethod'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/store.ShippingMethod'
+        "400":
+          description: Bad Request
+          schema: {}
+        "500":
+          description: Internal Server Error
+          schema: {}
+      summary: Update shipping method
+      tags:
+      - shipping-method
   /toko:
     post:
       consumes:

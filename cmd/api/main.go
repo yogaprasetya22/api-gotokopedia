@@ -191,7 +191,6 @@ func main() {
 		authenticator:     jwtAuthenticator,
 		rateLimiter:       rateLimiter,
 		googleOauthConfig: googleOauthConfig,
-		session:           sessionStore,
 	}
 
 	// matrucs collected

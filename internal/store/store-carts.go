@@ -11,6 +11,10 @@ import (
 	"github.com/lib/pq"
 )
 
+// ==============================================
+// TIPE DATA (STRUCTS)
+// ==============================================
+
 // Cart mewakili keranjang belanja pengguna
 type Cart struct {
 	ID        int64     `json:"id"`
@@ -48,64 +52,23 @@ type CartItem struct {
 	Product *Product `json:"product,omitempty"`
 }
 
+// MetaCart berisi informasi lengkap keranjang + total
 type MetaCart struct {
 	Cart       *Cart   `json:"cart"`
 	TotalItems int64   `json:"total_items"`
 	TotalPrice float64 `json:"total_price"`
 }
 
+// CartStore menyediakan operasi database untuk keranjang
 type CartStore struct {
 	db *sql.DB
 }
 
-func (s *CartStore) GetCartByUserIDPQ(ctx context.Context, userID int64, query PaginatedFeedQuery) (*MetaCart, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
+// ==============================================
+// OPERASI DASAR CART
+// ==============================================
 
-	// 1. Dapatkan cart utama
-	cart, err := s.getUserCart(ctx, tx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	// 3. Dapatkan stores dengan pagination
-	stores, err := s.getCartStores(ctx, tx, cart.ID, query)
-	if err != nil {
-		return nil, err
-	}
-
-	// 2. Dapatkan total items dan harga sekaligus
-	totalItems, totalPrice, err := s.GetCartTotals(ctx, cart.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	// 4. Untuk setiap store, dapatkan items-nya
-	for i := range stores {
-		items, err := s.getCartItemsByStore(ctx, tx, cart.ID, stores[i].ID)
-		if err != nil {
-			return nil, err
-		}
-		stores[i].Items = items
-	}
-
-	cart.Stores = stores
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
-	return &MetaCart{
-		Cart:       cart,
-		TotalItems: totalItems,
-		TotalPrice: totalPrice,
-	}, nil
-}
-
-// getUserCart mendapatkan cart utama user
+// GetCartByUserID mendapatkan cart utama user
 func (s *CartStore) GetCartByUserID(ctx context.Context, userID int64) (*Cart, error) {
 	const query = `
 		SELECT id, user_id, created_at, updated_at 
@@ -129,7 +92,7 @@ func (s *CartStore) GetCartByUserID(ctx context.Context, userID int64) (*Cart, e
 	return &cart, nil
 }
 
-// getUserCart mendapatkan cart utama user
+// getUserCart mendapatkan cart utama user (internal, menggunakan tx)
 func (s *CartStore) getUserCart(ctx context.Context, tx *sql.Tx, userID int64) (*Cart, error) {
 	const query = `
 		SELECT id, user_id, created_at, updated_at 
@@ -159,6 +122,60 @@ func (s *CartStore) getUserCart(ctx context.Context, tx *sql.Tx, userID int64) (
 	return &cart, nil
 }
 
+// Create membuat keranjang baru
+func (s *CartStore) Create(ctx context.Context, tx *sql.Tx, userID int64) (*Cart, error) {
+	query := `INSERT INTO carts (user_id, created_at, updated_at) 
+              VALUES ($1, $2, $2) 
+              RETURNING id, user_id, created_at, updated_at`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	var cart Cart
+	err := tx.QueryRowContext(ctx, query, userID, time.Now()).Scan(
+		&cart.ID,
+		&cart.UserID,
+		&cart.CreatedAt,
+		&cart.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &cart, nil
+}
+
+// FindOrCreateCart mencari atau membuat cart baru jika tidak ada
+func (s *CartStore) FindOrCreateCart(ctx context.Context, tx *sql.Tx, userID int64) (*Cart, error) {
+	query := `SELECT id, user_id, created_at, updated_at 
+              FROM carts 
+              WHERE user_id = $1 
+              ORDER BY created_at DESC 
+              LIMIT 1`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	var cart Cart
+	err := tx.QueryRowContext(ctx, query, userID).Scan(
+		&cart.ID,
+		&cart.UserID,
+		&cart.CreatedAt,
+		&cart.UpdatedAt,
+	)
+
+	switch {
+	case err == sql.ErrNoRows:
+		return s.Create(ctx, tx, userID)
+	case err != nil:
+		return nil, err
+	default:
+		return &cart, nil
+	}
+}
+
+// GetCartTotals menghitung total item dan harga dalam cart
 func (s *CartStore) GetCartTotals(ctx context.Context, cartID int64) (totalItems int64, totalPrice float64, err error) {
 	query := `
 		SELECT 
@@ -178,77 +195,49 @@ func (s *CartStore) GetCartTotals(ctx context.Context, cartID int64) (totalItems
 	return totalItems, totalPrice, nil
 }
 
-// GetCartStoresByID mendapatkan cart store berdasarkan []ID
-func (s *CartStore) GetCartStoresByID(ctx context.Context, cartStoreIDs []uuid.UUID) ([]CartStores, error) {
-	if len(cartStoreIDs) == 0 {
-		return []CartStores{}, nil
-	}
+// ==============================================
+// OPERASI CART STORES
+// ==============================================
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	defer tx.Rollback()
-
-	query := `
-		SELECT cs.id, cs.cart_id, cs.toko_id, cs.created_at,
-			   t.id, t.user_id, t.slug, t.name, t.image_profile, t.country, t.created_at
-		FROM cart_stores cs
-		JOIN tokos t ON cs.toko_id = t.id
-		WHERE cs.id = ANY($1)
-	ORDER BY cs.created_at`
+// findOrCreateCartStore mencari atau membuat cart store baru
+func (s *CartStore) findOrCreateCartStore(ctx context.Context, tx *sql.Tx, cartID, tokoID int64) (*CartStores, error) {
+	query := `SELECT id, cart_id, toko_id, created_at 
+              FROM cart_stores 
+              WHERE cart_id = $1 AND toko_id = $2 
+              LIMIT 1`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
 	defer cancel()
 
-	rows, err := tx.QueryContext(ctx, query, pq.Array(cartStoreIDs))
-	if err != nil {
-		return nil, err
-	}
+	var store CartStores
+	err := tx.QueryRowContext(ctx, query, cartID, tokoID).Scan(
+		&store.ID,
+		&store.CartID,
+		&store.TokoID,
+		&store.CreatedAt,
+	)
 
-	defer rows.Close()
-	var stores []CartStores
-	for rows.Next() {
-		var store CartStores
-		var toko Toko
-		err := rows.Scan(
+	switch {
+	case err == sql.ErrNoRows:
+		// Buat cart store baru
+		insertQuery := `INSERT INTO cart_stores (cart_id, toko_id, created_at)
+                        VALUES ($1, $2, $3)
+                        RETURNING id, cart_id, toko_id, created_at`
+		err = tx.QueryRowContext(ctx, insertQuery, cartID, tokoID, time.Now()).Scan(
 			&store.ID,
 			&store.CartID,
 			&store.TokoID,
 			&store.CreatedAt,
-			&toko.ID,
-			&toko.UserID,
-			&toko.Slug,
-			&toko.Name,
-			&toko.ImageProfile,
-			&toko.Country,
-			&toko.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
 		}
-		store.Toko = &toko
-		stores = append(stores, store)
-	}
-
-	if err := rows.Err(); err != nil {
+		return &store, nil
+	case err != nil:
 		return nil, err
+	default:
+		return &store, nil
 	}
-
-	for i := range stores {
-		items, err := s.getCartItemsByStore(ctx, tx, stores[i].CartID, stores[i].ID)
-		if err != nil {
-			return nil, err
-		}
-		stores[i].Items = items
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
-	return stores, nil
 }
 
 // getCartStores mendapatkan semua store dalam cart
@@ -307,6 +296,118 @@ func (s *CartStore) getCartStores(ctx context.Context, tx *sql.Tx, cartID int64,
 	return stores, nil
 }
 
+// GetCartStoresByID mendapatkan cart store berdasarkan []ID
+func (s *CartStore) GetCartStoresByID(ctx context.Context, cartStoreIDs []uuid.UUID) ([]CartStores, error) {
+	if len(cartStoreIDs) == 0 {
+		return []CartStores{}, nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	query := `
+		SELECT cs.id, cs.cart_id, cs.toko_id, cs.created_at,
+			   t.id, t.user_id, t.slug, t.name, t.image_profile, t.country, t.created_at
+		FROM cart_stores cs
+		JOIN tokos t ON cs.toko_id = t.id
+		WHERE cs.id = ANY($1)
+		ORDER BY cs.created_at`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	rows, err := tx.QueryContext(ctx, query, pq.Array(cartStoreIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stores []CartStores
+	for rows.Next() {
+		var store CartStores
+		var toko Toko
+		err := rows.Scan(
+			&store.ID,
+			&store.CartID,
+			&store.TokoID,
+			&store.CreatedAt,
+			&toko.ID,
+			&toko.UserID,
+			&toko.Slug,
+			&toko.Name,
+			&toko.ImageProfile,
+			&toko.Country,
+			&toko.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		store.Toko = &toko
+		stores = append(stores, store)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Dapatkan items untuk setiap store
+	for i := range stores {
+		items, err := s.getCartItemsByStore(ctx, tx, stores[i].CartID, stores[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		stores[i].Items = items
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return stores, nil
+}
+
+// ClearCartByCartStoreID menghapus semua item dari cart_store tertentu dan cart_store-nya
+func (s *CartStore) DeleteByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Hapus semua item di cart_store, pastikan cart_store milik user
+	_, err = tx.ExecContext(ctx,
+		`DELETE FROM cart_items 
+		 WHERE cart_store_id = $1 
+		 AND cart_id = (SELECT id FROM carts WHERE user_id = $2)`,
+		cartStoreID,
+		userID,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Hapus cart_store jika memang milik user
+	_, err = tx.ExecContext(ctx,
+		`DELETE FROM cart_stores 
+		 WHERE id = $1 
+		 AND cart_id = (SELECT id FROM carts WHERE user_id = $2)`,
+		cartStoreID,
+		userID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// ==============================================
+// OPERASI CART ITEMS
+// ==============================================
+
 // getCartItemsByStore mendapatkan semua item dalam cart_store tertentu
 func (s *CartStore) getCartItemsByStore(ctx context.Context, tx *sql.Tx, cartID int64, cartStoreID uuid.UUID) ([]CartItem, error) {
 	const query = `
@@ -333,7 +434,8 @@ func (s *CartStore) getCartItemsByStore(ctx context.Context, tx *sql.Tx, cartID 
 
 	rows, err := tx.QueryContext(ctx, query, cartID, cartStoreID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query cart items: %v and cartID: %d and storeID: %s", err, cartID, cartStoreID.String())
+		return nil, fmt.Errorf("failed to query cart items: %v and cartID: %d and storeID: %s", 
+			err, cartID, cartStoreID.String())
 	}
 	defer rows.Close()
 
@@ -407,10 +509,7 @@ func (s *CartStore) getCartItemsByStore(ctx context.Context, tx *sql.Tx, cartID 
 		product.CreatedAt = productCreatedAt
 		product.UpdatedAt = productUpdatedAt
 		product.Category = &category
-
-		// Convert time to string for Toko and User if needed
 		toko.User = &user
-
 		product.Toko = &toko
 		item.Product = &product
 
@@ -422,100 +521,6 @@ func (s *CartStore) getCartItemsByStore(ctx context.Context, tx *sql.Tx, cartID 
 	}
 
 	return items, nil
-}
-
-// Create membuat keranjang baru
-func (s *CartStore) Create(ctx context.Context, tx *sql.Tx, userID int64) (*Cart, error) {
-	query := `INSERT INTO carts (user_id, created_at, updated_at) 
-              VALUES ($1, $2, $2) 
-              RETURNING id, user_id, created_at, updated_at`
-
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
-	defer cancel()
-
-	var cart Cart
-	err := tx.QueryRowContext(ctx, query, userID, time.Now()).Scan(
-		&cart.ID,
-		&cart.UserID,
-		&cart.CreatedAt,
-		&cart.UpdatedAt,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &cart, nil
-}
-
-// FindOrCreateCart mencari atau membuat cart baru jika tidak ada
-func (s *CartStore) FindOrCreateCart(ctx context.Context, tx *sql.Tx, userID int64) (*Cart, error) {
-	query := `SELECT id, user_id, created_at, updated_at 
-              FROM carts 
-              WHERE user_id = $1 
-              ORDER BY created_at DESC 
-              LIMIT 1`
-
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
-	defer cancel()
-
-	var cart Cart
-	err := tx.QueryRowContext(ctx, query, userID).Scan(
-		&cart.ID,
-		&cart.UserID,
-		&cart.CreatedAt,
-		&cart.UpdatedAt,
-	)
-
-	switch {
-	case err == sql.ErrNoRows:
-		return s.Create(ctx, tx, userID)
-	case err != nil:
-		return nil, err
-	default:
-		return &cart, nil
-	}
-}
-
-// findOrCreateCartStore mencari atau membuat cart store baru
-func (s *CartStore) findOrCreateCartStore(ctx context.Context, tx *sql.Tx, cartID, tokoID int64) (*CartStores, error) {
-	query := `SELECT id, cart_id, toko_id, created_at 
-              FROM cart_stores 
-              WHERE cart_id = $1 AND toko_id = $2 
-              LIMIT 1`
-
-	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
-	defer cancel()
-
-	var store CartStores
-	err := tx.QueryRowContext(ctx, query, cartID, tokoID).Scan(
-		&store.ID,
-		&store.CartID,
-		&store.TokoID,
-		&store.CreatedAt,
-	)
-
-	switch {
-	case err == sql.ErrNoRows:
-		// Buat cart store baru
-		insertQuery := `INSERT INTO cart_stores (cart_id, toko_id, created_at)
-                        VALUES ($1, $2, $3)
-                        RETURNING id, cart_id, toko_id, created_at`
-		err = tx.QueryRowContext(ctx, insertQuery, cartID, tokoID, time.Now()).Scan(
-			&store.ID,
-			&store.CartID,
-			&store.TokoID,
-			&store.CreatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		return &store, nil
-	case err != nil:
-		return nil, err
-	default:
-		return &store, nil
-	}
 }
 
 // AddItem menambahkan item ke keranjang dengan grouping by toko
@@ -566,6 +571,7 @@ func (s *CartStore) AddItem(ctx context.Context, tx *sql.Tx, cartID, productID, 
 	return err
 }
 
+// getProduct mendapatkan informasi produk (helper function)
 func (s *CartStore) getProduct(ctx context.Context, tx *sql.Tx, id int64) (*Product, error) {
 	const query = `SELECT id, name, slug, country, description, price, discount_price, 
                           discount, estimation, stock, sold, is_for_sale, is_approved, 
@@ -613,101 +619,6 @@ func (s *CartStore) getProduct(ctx context.Context, tx *sql.Tx, id int64) (*Prod
 	}
 
 	return product, nil
-}
-
-// AddToCartTransaction menambahkan item ke cart dengan transaksi
-func (s *CartStore) AddToCartTransaction(ctx context.Context, userID, productID, quantity int64) (*Cart, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	// Cari atau buat cart
-	cart, err := s.FindOrCreateCart(ctx, tx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Tambahkan item ke cart
-	err = s.AddItem(ctx, tx, cart.ID, productID, quantity)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
-	return cart, nil
-}
-
-// AddingQuantityCartStoreItem menambahkan quantity item di cart store
-func (s *CartStore) IncreaseQuantityCartStoreItemTransaction(ctx context.Context, cartstoreItemID uuid.UUID, userID int64) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	// Tambahkan quantity item ke cart store
-	query := `UPDATE cart_items SET quantity = quantity + 1 WHERE id = $1 AND cart_id = (SELECT id FROM carts WHERE user_id = $2)`
-	_, err = tx.ExecContext(ctx, query, cartstoreItemID, userID)
-	if err != nil {
-		return nil
-	}
-
-	// Commit transaksi
-	return tx.Commit()
-}
-
-// RemoveQuantityCartStoreItem mengurangi quantity item di cart store
-func (s *CartStore) DecreaseQuantityCartStoreItemTransaction(ctx context.Context, cartstoreItemID uuid.UUID, userID int64) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	// Kurangi quantity item di cart store
-	query := `UPDATE cart_items SET quantity = quantity - 1 WHERE id = $1 AND cart_id = (SELECT id FROM carts WHERE user_id = $2)`
-	res, err := tx.ExecContext(ctx, query, cartstoreItemID, userID)
-	if err != nil {
-		return err
-	}
-
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rowsAffected == 0 {
-		// Tidak ada item yang diupdate, kemungkinan item sudah tidak ada
-		// Anggap sukses (idempotent), atau bisa return error khusus jika ingin
-		return tx.Commit()
-	}
-
-	// Cek apakah quantity menjadi kurang dari atau sama dengan 0
-	var quantity int
-	checkQuery := `SELECT quantity FROM cart_items WHERE id = $1`
-	err = tx.QueryRowContext(ctx, checkQuery, cartstoreItemID).Scan(&quantity)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// Item sudah tidak ada, anggap sukses
-			return tx.Commit()
-		}
-		return err
-	}
-
-	if quantity <= 0 {
-		// Hapus item jika quantity <= 0
-		deleteQuery := `DELETE FROM cart_items WHERE id = $1`
-		_, err = tx.ExecContext(ctx, deleteQuery, cartstoreItemID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return tx.Commit()
 }
 
 // UpdateItemQuantityByCartItemID mengupdate jumlah item di keranjang berdasarkan cartItemID
@@ -789,41 +700,6 @@ func (s *CartStore) RemoveItemByCartItemID(ctx context.Context, cartItemID uuid.
 	return tx.Commit()
 }
 
-// ClearCartByCartStoreID menghapus semua item dari cart_store tertentu dan cart_store-nya
-func (s *CartStore) ClearCartByCartStoreID(ctx context.Context, cartStoreID uuid.UUID, userID int64) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	// Hapus semua item di cart_store, pastikan cart_store milik user
-	_, err = tx.ExecContext(ctx,
-		`DELETE FROM cart_items 
-		 WHERE cart_store_id = $1 
-		 AND cart_id = (SELECT id FROM carts WHERE user_id = $2)`,
-		cartStoreID,
-		userID,
-	)
-	if err != nil {
-		return err
-	}
-
-	// Hapus cart_store jika memang milik user
-	_, err = tx.ExecContext(ctx,
-		`DELETE FROM cart_stores 
-		 WHERE id = $1 
-		 AND cart_id = (SELECT id FROM carts WHERE user_id = $2)`,
-		cartStoreID,
-		userID,
-	)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
-}
-
 // RemoveCartItemByID menghapus satu item dari cart berdasarkan cartItemID
 func (s *CartStore) RemoveCartItemByID(ctx context.Context, cartItemID uuid.UUID) error {
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -867,4 +743,177 @@ func (s *CartStore) RemoveCartItemByID(ctx context.Context, cartItemID uuid.UUID
 	}
 
 	return tx.Commit()
+}
+
+// IncreaseQuantityCartStoreItemTransaction menambahkan quantity item di cart store dengan pengecekan stok
+func (s *CartStore) IncreaseQuantityCartStoreItemTransaction(ctx context.Context, cartstoreItemID uuid.UUID, userID int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Dapatkan informasi produk dari cart item
+	var productID int64
+	var currentQuantity int64
+	query := `SELECT product_id, quantity FROM cart_items 
+              WHERE id = $1 AND cart_id = (SELECT id FROM carts WHERE user_id = $2)`
+	err = tx.QueryRowContext(ctx, query, cartstoreItemID, userID).Scan(&productID, &currentQuantity)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return ErrNotFound
+		}
+		return err
+	}
+
+	// 2. Dapatkan stok produk saat ini
+	var stock int64
+	err = tx.QueryRowContext(ctx, "SELECT stock FROM products WHERE id = $1", productID).Scan(&stock)
+	if err != nil {
+		return err
+	}
+
+	// 3. Cek apakah stok mencukupi
+	if currentQuantity >= stock {
+		return fmt.Errorf("product stock is not enough, only %d available", stock)
+	}
+
+	// 4. Tambahkan quantity item ke cart store
+	updateQuery := `UPDATE cart_items SET quantity = quantity + 1, updated_at = $1
+                  WHERE id = $2 AND cart_id = (SELECT id FROM carts WHERE user_id = $3)`
+	_, err = tx.ExecContext(ctx, updateQuery, time.Now(), cartstoreItemID, userID)
+	if err != nil {
+		return err
+	}
+
+	// Commit transaksi
+	return tx.Commit()
+}
+
+// DecreaseQuantityCartStoreItemTransaction mengurangi quantity item di cart store
+func (s *CartStore) DecreaseQuantityCartStoreItemTransaction(ctx context.Context, cartstoreItemID uuid.UUID, userID int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Kurangi quantity item di cart store
+	query := `UPDATE cart_items SET quantity = quantity - 1 
+              WHERE id = $1 AND cart_id = (SELECT id FROM carts WHERE user_id = $2)`
+	res, err := tx.ExecContext(ctx, query, cartstoreItemID, userID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		// Tidak ada item yang diupdate, kemungkinan item sudah tidak ada
+		return tx.Commit()
+	}
+
+	// Cek apakah quantity menjadi kurang dari atau sama dengan 0
+	var quantity int
+	checkQuery := `SELECT quantity FROM cart_items WHERE id = $1`
+	err = tx.QueryRowContext(ctx, checkQuery, cartstoreItemID).Scan(&quantity)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Item sudah tidak ada, anggap sukses
+			return tx.Commit()
+		}
+		return err
+	}
+
+	if quantity <= 0 {
+		// Hapus item jika quantity <= 0
+		deleteQuery := `DELETE FROM cart_items WHERE id = $1`
+		_, err = tx.ExecContext(ctx, deleteQuery, cartstoreItemID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// ==============================================
+// OPERASI KOMPLEKS/TRANSACTIONAL
+// ==============================================
+
+// GetCartByUserIDPQ mendapatkan cart lengkap dengan pagination
+func (s *CartStore) GetCartByUserIDPQ(ctx context.Context, userID int64, query PaginatedFeedQuery) (*MetaCart, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// 1. Dapatkan cart utama
+	cart, err := s.getUserCart(ctx, tx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Dapatkan total items dan harga sekaligus
+	totalItems, totalPrice, err := s.GetCartTotals(ctx, cart.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Dapatkan stores dengan pagination
+	stores, err := s.getCartStores(ctx, tx, cart.ID, query)
+	if err != nil {
+		return nil, err
+	}
+
+	// 4. Untuk setiap store, dapatkan items-nya
+	for i := range stores {
+		items, err := s.getCartItemsByStore(ctx, tx, cart.ID, stores[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		stores[i].Items = items
+	}
+
+	cart.Stores = stores
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return &MetaCart{
+		Cart:       cart,
+		TotalItems: totalItems,
+		TotalPrice: totalPrice,
+	}, nil
+}
+
+// AddToCartTransaction menambahkan item ke cart dengan transaksi
+func (s *CartStore) AddToCartTransaction(ctx context.Context, userID, productID, quantity int64) (*Cart, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// Cari atau buat cart
+	cart, err := s.FindOrCreateCart(ctx, tx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Tambahkan item ke cart
+	err = s.AddItem(ctx, tx, cart.ID, productID, quantity)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return cart, nil
 }

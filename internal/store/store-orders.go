@@ -73,39 +73,22 @@ type OrderStatus struct {
 	Description string `json:"description,omitempty"`
 }
 
-// ShippingMethod merepresentasikan metode pengiriman
-type ShippingMethod struct {
-	ID          int64   `json:"id"`
-	Name        string  `json:"name"`
-	Description string  `json:"description,omitempty"`
-	Price       float64 `json:"price"`
-	IsActive    bool    `json:"is_active"`
-}
-
-// PaymentMethod merepresentasikan metode pembayaran
-type PaymentMethod struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	IsActive    bool   `json:"is_active"`
-}
-
 // OrderDetail merepresentasikan view order_details
 type OrderDetail struct {
-	ID              int64     `json:"id"`
-	OrderNumber     string    `json:"order_number"`
-	CustomerName    string    `json:"customer_name"`
-	CustomerEmail   string    `json:"customer_email"`
-	Status          string    `json:"status"`
-	PaymentMethod   string    `json:"payment_method"`
-	ShippingMethod  string    `json:"shipping_method"`
-	ShippingCost    float64   `json:"shipping_cost"`
-	TotalPrice      float64   `json:"total_price"`
-	Discount        float64   `json:"discount"`
-	FinalPrice      float64   `json:"final_price"`
-	Notes           string    `json:"notes,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID             int64     `json:"id"`
+	OrderNumber    string    `json:"order_number"`
+	CustomerName   string    `json:"customer_name"`
+	CustomerEmail  string    `json:"customer_email"`
+	Status         string    `json:"status"`
+	PaymentMethod  string    `json:"payment_method"`
+	ShippingMethod string    `json:"shipping_method"`
+	ShippingCost   float64   `json:"shipping_cost"`
+	TotalPrice     float64   `json:"total_price"`
+	Discount       float64   `json:"discount"`
+	FinalPrice     float64   `json:"final_price"`
+	Notes          string    `json:"notes,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // OrderStore merupakan implementasi store untuk order
@@ -119,7 +102,7 @@ func (s *OrderStore) CreateFromCart(ctx context.Context, cartStoreID uuid.UUID, 
 	defer cancel()
 
 	_, err := s.db.ExecContext(ctx,
-		`SELECT create_order_from_cart($1, $2, $3, $4, $5, $6)`,
+		`SELECT public.create_order_from_cart($1, $2, $3, $4, $5, $6)`,
 		userID, cartStoreID, paymentMethodID, shippingMethodID, shippingAddressesID, notes)
 
 	return err
@@ -553,7 +536,6 @@ func (s *OrderStore) getOrderTrackingTx(ctx context.Context, tx *sql.Tx, order *
 	order.Tracking = trackings
 	return nil
 }
-
 
 // GetShippingMethods mendapatkan semua metode pengiriman
 func (s *OrderStore) GetShippingMethods(ctx context.Context) ([]*ShippingMethod, error) {

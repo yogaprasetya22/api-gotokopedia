@@ -223,3 +223,38 @@ func (app *application) RemovingQuantityCartStoreItemHandler(w http.ResponseWrit
 		return
 	}
 }
+
+// DeleteByCartStoreItemHandler gdoc
+//
+//	@Summary		delete cart store item
+//	@Description	delete cart store item by ID
+//	@Tags			cart
+//	@Accept			json
+//	@Produce		json
+//	@Param			cartStoreItemID	path		string	true	"cart store item ID"
+//	@Success		204				{object}	nil		
+//	@Failure		400				{object}	error
+//	@Failure		404				{object}	error
+//	@Failure		500				{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/cart/item/{cartStoreItemID}/delete [delete]
+func (app *application) DeleteByCartStoreItemHandler(w http.ResponseWriter, r *http.Request) {
+	cartStoreItemID, err := uuid.Parse(chi.URLParam(r, "cartStoreItemID"))
+	if err != nil {
+		app.badRequestResponse(w, r, errors.New("invalid cartStoreItemID format"))
+		return
+	}
+	user := getUserFromContext(r)
+
+	err = app.store.Carts.DeleteByCartStoreID(r.Context(), cartStoreItemID, user.ID)
+	if err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent) // 204 No Content
+	if err := app.jsonResponse(w, http.StatusNoContent, nil); err != nil {
+		app.internalServerError(w, r, err)
+		return
+	}
+}
